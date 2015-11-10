@@ -43,7 +43,6 @@ convert(?CB(Line, Clauses=[?CL(?C([Fn|_FName]))|_]), State=#{level := Level})
            Exported = Fn == 'fn+',
            case convert_fn_clauses(Clauses, State) of
                {ok, [Name], Arity, EClauses, State1} ->
-                   % TODO: for now export all
                    State2 = if Exported -> add_export(Name, Arity, State1);
                                true -> State1
                             end,
