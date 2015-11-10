@@ -1,4 +1,4 @@
-fn main:
+fn+ main:
     when A < 10:
         do something with A
         something else;
