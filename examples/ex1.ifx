@@ -1,0 +1,7 @@
+but also write like this 42
+[1 :two 3.2 (four is 4)]
+#[1 :two 3.2 (four is 4)]
+{:one 1 :two 2 :four (four is 4) :list [:a 1 2.3]}
+if a is less than 4:
+    do something here
+.

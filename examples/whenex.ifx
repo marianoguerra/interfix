@@ -1,0 +1,9 @@
+fn main:
+    when A < 10:
+        do something with A
+        something else;
+    when A < 20:
+        log warning "A is ~p" [A];
+    else:
+        log warn "wat".
+.

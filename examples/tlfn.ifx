@@ -1,0 +1,19 @@
+
+fn divide A by 0:
+    #[:error :division_by_zero];
+fn divide A by B:
+    #[:ok (A / B)].
+
+fn format Str with Args:
+    io :: format Str Args.
+
+fn+ export this one 0:
+    0;
+fn export this one A:
+    A + 1.
+
+fn+ main:
+    _ is #[1 1.5 :foo [] [:bar #[]]]
+    other module :: multiply 3 by 7
+    format "value is ~p" with [C]
+    C is (divide 42 by 2).
