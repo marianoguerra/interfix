@@ -117,10 +117,6 @@ convert(?Op(Line, is, Left, Right), State) ->
 
 convert(?C(['_'], [V]), State) ->
     convert(V, State);
-convert(?C(Line, [call|Names], [{list, _, Args}]), State) ->
-    Name = to_erl_call_name(Line, Names),
-    {EArgs, State1} = to_erl(Args, [], State),
-    {ok, {call, Line, Name, EArgs}, State1};
 convert(?C(Line, Names=[First|_], Args), State) when First /= '_' ->
     Name = to_call_name(Line, Names),
     {EArgs, State1} = to_erl(Args, [], State),
@@ -128,10 +124,6 @@ convert(?C(Line, Names=[First|_], Args), State) when First /= '_' ->
 
 convert(_, State) ->
     {error, unknown_node, State}.
-
-to_erl_call_name(Line, Names) ->
-    to_call_name(Line, lists:filter(fun ('_') -> false; (_) -> true end,
-                                    Names)).
 
 to_call_name(Line, Names) ->
     case to_name(Names) of
