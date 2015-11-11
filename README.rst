@@ -214,7 +214,7 @@ Anonymous Functions
 
 As you can see there are no commas, no parenthesis, no reserved keywords and
 functions receive parameter "interfixed" between function name tokens, this
-allows thinks like:
+allows things like:
 
 .. code-block:: ruby
 
