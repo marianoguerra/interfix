@@ -29,7 +29,7 @@ convert_fn_clauses([?CL(Line, ?C([_Fn|FName], CArgs), Body)|T], Name, Arity, Acc
     CurArity = length(CArgs),
     if CurArity /= Arity -> {error, head_arity_mismatch, State};
        FName /= Name -> {error, head_name_mismatch, State};
-       true -> 
+       true ->
            {EBody, State1} = to_erl(Body, [], State),
            {EArgs, State2} = to_erl(CArgs, [], State1),
            EClause = {clause, Line, EArgs, [], EBody},
@@ -37,7 +37,7 @@ convert_fn_clauses([?CL(Line, ?C([_Fn|FName], CArgs), Body)|T], Name, Arity, Acc
     end.
 
 
-convert(?CB(Line, Clauses=[?CL(?C([Fn|_FName]))|_]), State=#{level := Level}) 
+convert(?CB(Line, Clauses=[?CL(?C([Fn|_FName]))|_]), State=#{level := Level})
         when Fn == 'fn'; Fn == 'fn+' ->
     if Level == 0 ->
            Exported = Fn == 'fn+',
@@ -53,14 +53,25 @@ convert(?CB(Line, Clauses=[?CL(?C([Fn|_FName]))|_]), State=#{level := Level})
        true -> {error, fn_not_on_top_level, State}
     end;
 
-
-
 convert(?CB(Line, Clauses=[?CL(?C(['when'|_FName]))|_]), State) ->
     case check_clauses(Clauses, 'when', true) of
         ok ->
             {EClauses, State1} = with_clauses(Clauses, State,
                                               fun convert_when_clauses/6, []),
             R = {'if', Line, EClauses},
+            {ok, R, State1};
+        {error, Reason} ->
+            {error, {bad_expr, 'when', Reason}, State}
+    end;
+
+convert(?CB(Line, Clauses=[?CCS(['if', '_', is, '_'])|_]), State) ->
+    case check_clauses_shape(Clauses, ['if', '_', is, '_'], ['if', it, is, '_'], [else]) of
+        ok ->
+            {MEClauses, State1} = with_clauses(Clauses, State,
+                                       fun convert_case_clauses/6, []),
+            [[EMatch, EFirstClause]|ERestClauses] = MEClauses,
+            EClauses = [EFirstClause|ERestClauses],
+            R = {'case', Line, EMatch, EClauses},
             {ok, R, State1};
         {error, Reason} ->
             {error, {bad_expr, 'when', Reason}, State}
@@ -110,7 +121,7 @@ convert(?Op(Line, Op='~', Left), State) -> op(Line, Op, Left, State);
 
 convert(?Op(Line, is, Left, Right), State) ->
     with_converted([Left, Right], State,
-                   fun (State1, ELeft, ERight) ->
+                   fun (State1, [ELeft, ERight]) ->
                            {ok, {match, Line, ELeft, ERight}, State1}
                    end);
 
@@ -157,13 +168,13 @@ add_name_part(CurAccum, Accum) ->
 
 op(Line, Op, Left, Right, State) ->
     with_converted([Left, Right], State,
-                   fun (State1, ELeft, ERight) ->
+                   fun (State1, [ELeft, ERight]) ->
                            {ok, {op, Line, map_op(Op), ELeft, ERight}, State1}
                    end).
 
 op(Line, Op, Left, State) ->
     with_converted([Left], State,
-                   fun (State1, ELeft) ->
+                   fun (State1, [ELeft]) ->
                            {ok, {op, Line, map_op(Op), ELeft}, State1}
                    end).
 
@@ -193,19 +204,36 @@ map_op('>=') -> '>=';
 map_op('==') -> '=:=';
 map_op('!=') -> '=/='.
 
+convert_nodes(Nodes, State) ->
+    R = lists:foldl(fun (Node, {Status, Accum, StateIn}) ->
+                            case convert(Node, StateIn) of
+                                {ok, R, StateOut} -> {Status, [R|Accum], StateOut};
+                                {error, Error, StateOut} ->
+                                    {error, Accum, add_error(StateOut, Node, Error)}
+                            end
+                    end, {ok, [], State}, Nodes),
+    {Status, ENodes, State1} = R,
+    {Status, lists:reverse(ENodes), State1}.
+
 with_converted(Nodes, State, Fun) ->
-    FR = lists:foldl(fun (Node, {StateIn, Accum}) ->
-                                 case convert(Node, StateIn) of
-                                     {ok, R, StateOut} -> {StateOut, [R|Accum]};
-                                     {error, Error, StateOut} ->
-                                         {add_error(StateOut, Node, Error), Accum}
-                                 end
-                         end, {State, []}, Nodes),
-    {State1, ENodes} = FR,
-    NodesLen = length(Nodes),
-    ENodesLen = length(ENodes),
-    if NodesLen == ENodesLen -> apply(Fun, [State1|lists:reverse(ENodes)]);
-       true -> {error, parsing_expr, State1}
+    case convert_nodes(Nodes, State) of
+        {ok, ENodes, State1} ->
+            Fun(State1, ENodes);
+        {error, _ENodes, State1} ->
+            {error, parsing_expr, State1}
+    end.
+
+with_converted(Nodes, Body, State, Fun) ->
+    case convert_nodes(Nodes, State) of
+        {ok, ENodes, State1} ->
+            case convert_nodes(Body, State1) of
+                {ok, EBody, State2} ->
+                    Fun(State2, ENodes, EBody);
+                {error, _ENodes, State2} ->
+                    {error, parsing_body_expr, State2}
+            end;
+        {error, _ENodes, State1} ->
+            {error, parsing_expr, State1}
     end.
 
 add_export(Name, Arity, State=#{exported := Exported}) ->
@@ -226,13 +254,13 @@ list_to_cons_list_r(Line, [H|T], Cons, State) ->
     end.
 
 check_clauses([], _Name, _AllowElse) -> true;
-check_clauses([?CL(?C([Name|_]))|T], Name, AllowElse) -> 
+check_clauses([?CL(?C([Name|_]))|T], Name, AllowElse) ->
     check_clauses(T, Name, AllowElse);
-check_clauses([?CL(?C(['else'], []))], _Name, AllowElse) -> 
+check_clauses([?CL(?C(['else'], []))], _Name, AllowElse) ->
     if AllowElse -> ok;
        true -> {error, else_not_allowed}
     end;
-check_clauses([Other|_], _Name, _AllowElse) -> 
+check_clauses([Other|_], _Name, _AllowElse) ->
     {error, {bad_clause, Other}}.
 
 convert_when_clauses(Line, 'when', Names, Args, Body, State) ->
@@ -248,10 +276,29 @@ convert_when_clauses(Line, 'when', Names, Args, Body, State) ->
         Other -> Other
     end;
 convert_when_clauses(Line, 'else', [], [], Body, State) ->
-    io:format("~p else ~p~n", [Line, Body]),
     case to_erl(Body, State) of
         {EBody, State1} ->
             R = {clause, Line, [], [[{atom, Line, true}]], EBody},
+            {ok, R, State1};
+        Other -> Other
+    end.
+
+convert_case_clauses(Line, 'if', ['_', is, '_'], [Expr, Match], Body, State) ->
+    with_converted([Expr, Match], Body, State,
+                   fun (State1, [EExpr, EMatch], EBody) ->
+                           R = [EExpr, {clause, Line, [EMatch], [], EBody}],
+                           {ok, R, State1}
+                   end);
+convert_case_clauses(Line, 'if', [it, is, '_'], [Match], Body, State) ->
+    with_converted([Match], Body, State,
+                   fun (State1, [EMatch], EBody) ->
+                           R = {clause, Line, [EMatch], [], EBody},
+                           {ok, R, State1}
+                   end);
+convert_case_clauses(Line, 'else', [], [], Body, State) ->
+    case to_erl(Body, State) of
+        {EBody, State1} ->
+            R = {clause, Line, [{var, Line, '_'}], [], EBody},
             {ok, R, State1};
         Other -> Other
     end.
@@ -267,3 +314,20 @@ with_clauses([Clause=?CL(?C(Line, [Type|Rest], Args), Body)|T], State, Fun, Accu
             with_clauses(T, State2, Fun, Accum)
     end.
 
+check_clauses_shape(Clauses, First, Middle, Last) ->
+    check_clauses_shape(Clauses, First, Middle, Last, true).
+
+check_clauses_shape([?CCS(First)|T], First, Middle, Last, true) ->
+    check_clauses_shape(T, First, Middle, Last, false);
+check_clauses_shape([Other|_], _First, _Middle, _Last, true) ->
+    {error, {bad_first, Other}};
+check_clauses_shape([?CCS(Middle)|T], First, Middle, Last, false) ->
+    check_clauses_shape(T, First, Middle, Last, false);
+check_clauses_shape([Other|[_|_]], _First, _Middle, _Last, true) ->
+    {error, {bad_middle, Other}};
+check_clauses_shape([?CCS(Last)], _First, _Middle, Last, false) ->
+    ok;
+check_clauses_shape([], _First, _Middle, _Last, false) ->
+    ok;
+check_clauses_shape([Other], _First, _Middle, _Last, false) ->
+    {error, {bad_last, Other}}.
