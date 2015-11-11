@@ -163,6 +163,27 @@ Begin End
             and some other stuff
             A + 2).
 
+Data Types
+----------
+
+.. code-block:: ruby
+
+    fn+ data types examples:
+        an int 42
+        a float 1.5 
+        an atom :foo
+        nil is :nil
+        booleans are atoms too :true and :false
+        an empty list []
+        a list with some items [1 2.5 :true :nil [] [:bar]]
+        an empty tuple #[]
+        a tuple with some items #[1 2.5 :true :nil [] [:bar]]
+        a cons (cons 1 [])
+        improper list (cons 1 2)
+        nested conses (cons 1 (cons 2 []))
+        a list string "hi there"
+        a binary string 'hi there too'.
+
 As you can see there are no commas, no parenthesis, no reserved keywords and
 functions receive parameter "interfixed" between function name tokens, this
 allows thinks like:
@@ -181,10 +202,6 @@ If Erlang
 
 .. code-block:: erlang
 
-    -module(whenex).
-
-    -export([main/0]).
-
     main() ->
         if A < 10 -> do_something_with(A), something_else();
            A < 20 -> log_warning("A is ~p", [A]);
@@ -195,9 +212,6 @@ Misc Erlang
 ------------
 
 .. code-block:: erlang
-
-    -module(tlfn).
-    -export([main/0, export_this_one/1]).
 
     divide_O_by(A, 0) -> {error, division_by_zero};
     divide_O_by(A, B) -> {ok, A / B}.
@@ -218,11 +232,6 @@ Case Of Erlang
 --------------
 
 .. code-block:: erlang
-
-    -module(ifis).
-
-    -export([check_all/1, check_if_O_else_it/2,
-             check_if_O_else_it/2, check_if_else/1, check_if/1]).
 
     check_if(A) -> case A of 12 -> print(12) end.
 
@@ -259,11 +268,6 @@ Receive After Erlang
 
 .. code-block:: erlang
 
-    -module('receive').
-
-    -export([receive_two_and_timeout/0, receive_two/0,
-             receive_one/0]).
-
     receive_one() -> receive 43 -> do_something_here() end.
 
     receive_two() ->
@@ -283,10 +287,6 @@ Try Catch Finally Erlang
 ------------------------
 
 .. code-block:: erlang
-
-    -module('try').
-
-    -export([try_catch_always/0, try_catch/0, try_always/0]).
 
     try_always() ->
         try something_that_may_break(), something_else() after
@@ -316,10 +316,6 @@ Begin End Erlang
 
 .. code-block:: erlang
 
-    -module(do).
-
-    -export([simple_do_with/1, do_with_O_as_value/1]).
-
     simple_do_with(A) ->
         begin
           some_stuff_with(A), and_some_other_stuff(), A + 2
@@ -329,6 +325,27 @@ Begin End Erlang
         with_result_of_do(begin
                             some_stuff_with(A), and_some_other_stuff(), A + 2
                           end).
+
+Data Types Erlang
+-----------------
+
+.. code-block:: erlang
+
+    data_types_examples() ->
+        an_int(42),
+        a_float(1.5),
+        an_atom(foo),
+        nil_is(nil),
+        booleans_are_atoms_too_O_and(true, false),
+        an_empty_list([]),
+        a_list_with_some_items([1, 2.5, true, nil, [], [bar]]),
+        an_empty_tuple({}),
+        a_tuple_with_some_items({1, 2.5, true, nil, [], [bar]}),
+        a_cons([1]),
+        improper_list([1 | 2]),
+        nested_conses([1, 2]),
+        a_list_string("hi there"),
+        a_binary_string(<<"hi there too">>).
 
 Build
 -----
