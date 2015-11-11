@@ -1,0 +1,36 @@
+
+fn+ try always:
+    try:
+        something that may break
+        something else;
+    always:
+        try to recover
+        and cleanup.
+    .
+
+fn+ try catch always:
+    try:
+        something that may break
+        something else;
+
+    catch throw T: handle throw T;
+    catch error E: handle error E;
+    catch exit Ex: handle exit Ex;
+    catch Type E: handle Type E.
+    .
+
+fn+ try catch always:
+    try:
+        something that may break
+        something else;
+
+    catch throw T: handle throw T;
+    catch error E: handle error E;
+    catch exit Ex: handle exit Ex;
+    catch Type E: handle Type E;
+        
+    always:
+        try to recover
+        and cleanup.
+    .
+

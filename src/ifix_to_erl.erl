@@ -77,6 +77,21 @@ convert(?CB(Line, Clauses=[?CCS(['if', '_', is, '_'])|_]), State) ->
             {error, {bad_expr, 'case', Reason}, State}
     end;
 
+convert(?CB(Line, Clauses=[?CCS(['try'])|_]), State) ->
+    case check_clauses_shape(Clauses, fun check_try_shape/2) of
+        ok ->
+            Vs = with_clauses(Clauses, State, fun convert_try_clauses/6, []),
+            case Vs of
+                {[{'finally', _, EFBody}, {'try', _, ETBody}|EClauses], State1} ->
+                    R = {'try', Line, ETBody, [], EClauses, EFBody},
+                    {ok, R, State1};
+                {[{'try', _, ETBody}|EClauses], State1} ->
+                    R = {'try', Line, ETBody, [], EClauses, []},
+                    {ok, R, State1}
+            end;
+        {error, Reason} ->
+            {error, {bad_expr, 'try', Reason}, State}
+    end;
 convert(?CB(Line, Clauses=[?CCS([on, message, '_'])|_]), State) ->
     case check_clauses_shape(Clauses, [on, message, '_'], [on, message, '_'],
                              ['after', '_', milliseconds]) of
@@ -334,6 +349,37 @@ convert_recv_clauses(Line, 'after', ['_', milliseconds], [AfterExpr], Body, Stat
                            {prepend, R, State1}
                    end).
 
+convert_try_clauses(Line, 'try', [], [], Body, State) ->
+    with_converted(Body, State,
+                   fun (State1, EBody) ->
+                           {ok, {'try', Line, EBody}, State1}
+                   end);
+convert_try_clauses(Line, 'catch', [Type, '_'], [Catch], Body, State) when is_atom(Type) ->
+    with_converted([Catch], Body, State,
+                   fun (State1, [ECatch], EBody) ->
+                           R = {clause, Line,
+                                [{tuple, Line, [{atom, Line, Type}, ECatch,
+                                                {var, Line, '_'}]}],
+                                [], EBody},
+                           {ok, R, State1}
+                   end);
+
+convert_try_clauses(Line, 'catch', ['_', '_'], [Type, Catch], Body, State) ->
+    with_converted([Type, Catch], Body, State,
+                   fun (State1, [EType, ECatch], EBody) ->
+                           R = {clause, Line,
+                                [{tuple, Line, [EType, ECatch,
+                                                {var, Line, '_'}]}],
+                                [], EBody},
+                           {ok, R, State1}
+                   end);
+
+convert_try_clauses(Line, 'always', [], [], Body, State) ->
+    with_converted(Body, State,
+                   fun (State1, EBody) ->
+                           {prepend, {'finally', Line, EBody}, State1}
+                   end).
+
 with_clauses([], State, _Fun, Accum) ->
     {lists:reverse(Accum), State};
 with_clauses([Clause=?CL(?C(Line, [Type|Rest], Args), Body)|T], State, Fun, Accum) ->
@@ -346,6 +392,38 @@ with_clauses([Clause=?CL(?C(Line, [Type|Rest], Args), Body)|T], State, Fun, Accu
             State2 = add_error(State1, Clause, Reason),
             with_clauses(T, State2, Fun, Accum)
     end.
+
+check_clauses_shape(Clauses, Fun) ->
+    check_clauses_shape(Clauses, Fun, first).
+
+check_clauses_shape([], _Fun, _Pos) -> ok;
+check_clauses_shape([Clause|Clauses], Fun, Pos) ->
+    case Fun(Clause, Pos) of
+        ok -> check_clauses_shape(Clauses, Fun, next_pos(Pos, Clauses));
+        {error, _Reason}=Error -> Error
+    end.
+
+next_pos(first, []) -> 'end'; % shouldn't be used
+next_pos(first, [_]) -> last;
+next_pos(first, _) -> middle;
+next_pos(middle, []) -> 'end'; % shouldn't be used
+next_pos(middle, [_]) -> last;
+next_pos(middle, _) -> middle;
+next_pos(last, _) -> 'end'. % shouldn't be used
+
+check_try_shape(?CCS(['try']), first) -> ok;
+check_try_shape(?CCS(['catch', error, '_']), middle) -> ok;
+check_try_shape(?CCS(['catch', throw, '_']), middle) -> ok;
+check_try_shape(?CCS(['catch', exit, '_']), middle) -> ok;
+check_try_shape(?CCS(['catch', '_', '_']), middle) -> ok;
+
+check_try_shape(?CCS(['catch', error, '_']), last) -> ok;
+check_try_shape(?CCS(['catch', throw, '_']), last) -> ok;
+check_try_shape(?CCS(['catch', exit, '_']), last) -> ok;
+check_try_shape(?CCS(['catch', '_', '_']), last) -> ok;
+
+check_try_shape(?CCS(['always']), last) -> ok;
+check_try_shape(?CCS(Other), Pos) -> {error, {bad_try_clause, Pos, Other}}.
 
 check_clauses_shape(Clauses, First, Middle, Last) ->
     check_clauses_shape(Clauses, First, Middle, Last, true).

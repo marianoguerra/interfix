@@ -13,6 +13,9 @@ that is actually useful.
 
 First some working examples:
 
+If
+--
+
 .. code-block:: ruby
 
     fn main:
@@ -24,6 +27,9 @@ First some working examples:
         else:
             log warn "wat".
     .
+
+Misc
+----
 
 .. code-block:: ruby
 
@@ -45,6 +51,9 @@ First some working examples:
         other module :: multiply 3 by 7
         format "value is ~p" with [C]
         C is (divide 42 by 2).
+
+Case Of
+-------
 
 .. code-block:: ruby
 
@@ -76,6 +85,9 @@ First some working examples:
         else:        print :other.
         .
 
+Receive After
+-------------
+
 .. code-block:: ruby
 
     fn+ receive one:
@@ -93,6 +105,46 @@ First some working examples:
         after 50 milliseconds: do timeout thing.
         .
 
+Try Catch Finally
+------------------
+
+.. code-block:: ruby
+
+    fn+ try always:
+        try:
+            something that may break
+            something else;
+        always:
+            try to recover
+            and cleanup.
+        .
+
+    fn+ try catch always:
+        try:
+            something that may break
+            something else;
+
+        catch throw T: handle throw T;
+        catch error E: handle error E;
+        catch exit Ex: handle exit Ex;
+        catch Type E: handle Type E.
+        .
+
+    fn+ try catch always:
+        try:
+            something that may break
+            something else;
+
+        catch throw T: handle throw T;
+        catch error E: handle error E;
+        catch exit Ex: handle exit Ex;
+        catch Type E: handle Type E;
+            
+        always:
+            try to recover
+            and cleanup.
+        .
+
 As you can see there are no commas, no parenthesis, no reserved keywords and
 functions receive parameter "interfixed" between function name tokens, this
 allows thinks like:
@@ -105,6 +157,24 @@ allows thinks like:
     C is (divide 42 by 2).
 
 The code in the previous examples compiles to:
+
+If Erlang
+---------
+
+.. code-block:: erlang
+
+    -module(whenex).
+
+    -export([main/0]).
+
+    main() ->
+        if A < 10 -> do_something_with(A), something_else();
+           A < 20 -> log_warning("A is ~p", [A]);
+           true -> log_warn("wat")
+        end.
+
+Misc Erlang
+------------
 
 .. code-block:: erlang
 
@@ -126,16 +196,8 @@ The code in the previous examples compiles to:
         C = divide_O_by(42, 2).
 
 
-.. code-block:: erlang
-
-    -module(whenex).
-    -export([]).
-
-    main() ->
-        if A < 10 -> do_something_with(A), something_else();
-           A < 20 -> log_warning("A is ~p", [A]);
-           true -> log_warn("wat")
-        end.
+Case Of Erlang
+--------------
 
 .. code-block:: erlang
 
@@ -174,6 +236,9 @@ The code in the previous examples compiles to:
           _ -> print(other)
         end.
 
+Receive After Erlang
+--------------------
+
 .. code-block:: erlang
 
     -module('receive').
@@ -194,6 +259,39 @@ The code in the previous examples compiles to:
           43 -> do_something_here();
           a -> something_else()
           after 50 -> do_timeout_thing()
+        end.
+
+Try Catch Finally Erlang
+------------------------
+
+.. code-block:: erlang
+
+    -module('try').
+
+    -export([try_catch_always/0, try_catch_always/0,
+             try_always/0]).
+
+    try_always() ->
+        try something_that_may_break(), something_else() after
+          try_to_recover(), and_cleanup()
+        end.
+
+    try_catch_always() ->
+        try something_that_may_break(), something_else() catch
+          T -> handle_throw(T);
+          error:E -> handle_error(E);
+          exit:Ex -> handle_exit(Ex);
+          Type:E -> handle(Type, E)
+        end.
+
+    try_catch_always() ->
+        try something_that_may_break(), something_else() catch
+          T -> handle_throw(T);
+          error:E -> handle_error(E);
+          exit:Ex -> handle_exit(Ex);
+          Type:E -> handle(Type, E)
+        after
+          try_to_recover(), and_cleanup()
         end.
 
 
