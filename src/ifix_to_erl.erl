@@ -41,14 +41,27 @@ convert(?CB(Line, Clauses=[?CL(?C([Fn|_FName]))|_]), State=#{level := Level})
         when Fn == 'fn'; Fn == 'fn+' ->
     if Level == 0 ->
            Exported = Fn == 'fn+',
-           case convert_fn_clauses(Clauses, State) of
+           case convert_fn_clauses(Clauses, State#{level => Level + 1}) of
                {ok, [Name], Arity, EClauses, State1} ->
                    State2 = if Exported -> add_export(Name, Arity, State1);
                                true -> State1
                             end,
-                   {ok, {function, Line, Name, Arity, EClauses}, State2};
+                   {ok, {function, Line, Name, Arity, EClauses}, State2#{level => Level}};
                {error, Error, State1} ->
                    {error, Error, State1}
+           end;
+       Fn == 'fn' ->
+           case {check_clauses_shape(Clauses, fun check_lambda_shape/2),
+                 check_clauses_same_arity(Clauses)} of
+               {ok, ok} ->
+                   {EClauses, State1} = with_clauses(Clauses, State#{level => Level + 1},
+                                                     fun convert_lambda_clauses/6, []),
+                   R = {'fun', Line, {clauses, EClauses}},
+                   {ok, R, State1#{level => Level}};
+               {{error, Reason}, _} ->
+                   {error, {bad_expr, 'fun', Reason}, State};
+               {_, {error, Reason}} ->
+                   {error, {bad_expr, 'fun', Reason}, State}
            end;
        true -> {error, fn_not_on_top_level, State}
     end;
@@ -394,6 +407,12 @@ convert_try_clauses(Line, 'always', [], [], Body, State) ->
                            {prepend, {'finally', Line, EBody}, State1}
                    end).
 
+convert_lambda_clauses(Line, 'fn', _Names, Args, Body, State) ->
+    with_converted(Args, Body, State,
+                   fun (State1, EArgs, EBody) ->
+                           {ok, {clause, Line, EArgs, [], EBody}, State1}
+                   end).
+
 with_clauses([], State, _Fun, Accum) ->
     {lists:reverse(Accum), State};
 with_clauses([Clause=?CL(?C(Line, [Type|Rest], Args), Body)|T], State, Fun, Accum) ->
@@ -438,6 +457,21 @@ check_try_shape(?CCS(['catch', '_', '_']), last) -> ok;
 
 check_try_shape(?CCS(['always']), last) -> ok;
 check_try_shape(?CCS(Other), Pos) -> {error, {bad_try_clause, Pos, Other}}.
+
+check_lambda_shape(?CCS(['fn'|Names]), _) ->
+    case lists:all(fun ('_') -> true; (_) -> false end, Names) of
+        true -> ok;
+        false -> {error, {bad_lambda_clause, {invalid_arguments, Names}}}
+    end.
+
+check_clauses_same_arity([?CCS(['fn'|FNames])|Clauses]) ->
+    Arity = length(FNames),
+    lists:foldl(fun (?CCS(['fn'|Names]), Status) ->
+                        CurArity = length(Names),
+                        if CurArity =/= Arity -> {error, head_mismatch};
+                           true  -> Status
+                        end
+                end, ok, Clauses).
 
 check_clauses_shape(Clauses, First, Middle, Last) ->
     check_clauses_shape(Clauses, First, Middle, Last, true).

@@ -184,6 +184,34 @@ Data Types
         a list string "hi there"
         a binary string 'hi there too'.
 
+Anonymous Functions
+-------------------
+
+.. code-block:: ruby
+
+    fn+ lambda 0:
+        fn: :ok.
+        .
+
+    fn+ lambda 1:
+        fn A: A + 1.
+        .
+
+    fn+ lambda 2:
+        fn A B: A + B.
+        .
+
+    fn+ lambda 3:
+        fn A :minus  B:
+            log info "is minus ~p ~p" [A B]
+            A - B.
+        .
+
+    fn+ lambda multiple clauses:
+        fn A :divided :by 0: #[:error :divide_by_zero];
+        fn A :divided :by B: #[:ok (A / B)].
+        .
+
 As you can see there are no commas, no parenthesis, no reserved keywords and
 functions receive parameter "interfixed" between function name tokens, this
 allows thinks like:
@@ -347,6 +375,27 @@ Data Types Erlang
         a_list_string("hi there"),
         a_binary_string(<<"hi there too">>).
 
+Anonymous Functions Erlang
+--------------------------
+
+.. code-block:: erlang
+
+    lambda(0) -> fun () -> ok end.
+
+    lambda(1) -> fun (A) -> A + 1 end.
+
+    lambda(2) -> fun (A, B) -> A + B end.
+
+    lambda(3) ->
+        fun (A, minus, B) ->
+                log_info("is minus ~p ~p", [A, B]), A - B
+        end.
+
+    lambda_multiple_clauses() ->
+        fun (A, divided, by, 0) -> {error, divide_by_zero};
+            (A, divided, by, B) -> {ok, A / B}
+        end.
+
 Build
 -----
 
@@ -369,6 +418,7 @@ Works
 .....
 
 * multi clause functions (no when clauses)
+* anonymous functions
 * if expression (when in interfix)
 * case .. of
 * receive/after

@@ -1,0 +1,23 @@
+
+fn+ lambda 0:
+    fn: :ok.
+    .
+
+fn+ lambda 1:
+    fn A: A + 1.
+    .
+
+fn+ lambda 2:
+    fn A B: A + B.
+    .
+
+fn+ lambda 3:
+    fn A :minus  B:
+        log info "is minus ~p ~p" [A B]
+        A - B.
+    .
+
+fn+ lambda multiple clauses:
+    fn A :divided :by 0: #[:error :divide_by_zero];
+    fn A :divided :by B: #[:ok (A / B)].
+    .
