@@ -4,6 +4,7 @@ interfix
 An experimential programming language for the Erlang VM.
 
 prefix? infix? postfix? none, interfix
+
 underscores? camel case? pascal case? none, interfix
 
 interfix is an experiment to break with some common "expectations" in
@@ -44,6 +45,36 @@ First some working examples:
         other module :: multiply 3 by 7
         format "value is ~p" with [C]
         C is (divide 42 by 2).
+
+.. code-block:: ruby
+
+    fn+ check if A:
+        if A is 12: print 12.
+        .
+
+    fn+ check if else A:
+        if A  is 12: print 12;
+        else:        print :other.
+        .
+
+    fn+ check if 1 else it A:
+        if A  is 12: print 12;
+        if it is 32: print 32;
+        else:        print :other.
+        .
+
+    fn+ check if 2 else it A:
+        if A  is 12: print 12;
+        if it is 32: print 32;
+        if it is 33: print 32;
+        else:        print :other.
+        .
+
+    fn+ check all A:
+        if A  is 12: print 12;
+        if it is 32: print 32;
+        else:        print :other.
+        .
 
 As you can see there are no commas, no parenthesis and functions receive
 parameter "interfixed" between function name tokens, this allows thinks like:
@@ -88,6 +119,45 @@ The code in the previous examples compiles to:
            true -> log_warn("wat")
         end.
 
+.. code-block:: ruby
+
+    -module(ifis).
+
+    -export([check_all/1, check_if_O_else_it/2,
+             check_if_O_else_it/2, check_if_else/1, check_if/1]).
+
+    check_if(A) -> case A of 12 -> print(12) end.
+
+    check_if_else(A) ->
+        case A of
+          12 -> print(12);
+          _ -> print(other)
+        end.
+
+    check_if_O_else_it(1, A) ->
+        case A of
+          12 -> print(12);
+          32 -> print(32);
+          _ -> print(other)
+        end.
+
+    check_if_O_else_it(2, A) ->
+        case A of
+          12 -> print(12);
+          32 -> print(32);
+          33 -> print(32);
+          _ -> print(other)
+        end.
+
+    check_all(A) ->
+        case A of
+          12 -> print(12);
+          32 -> print(32);
+          _ -> print(other)
+        end.
+
+
+
 Build
 -----
 
@@ -111,6 +181,7 @@ Works
 
 * multi clause functions (no when clauses)
 * if expression (when in interfix)
+* case .. of
 * function calls, local and to other modules
 * erlang interop
 * ints, floats, atoms, strings
@@ -120,7 +191,6 @@ Works
 Missing
 .......
 
-* case .. of (need to think of syntax)
 * list comprehension
 * record support (need to think of syntax)
 * other stuff
