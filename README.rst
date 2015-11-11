@@ -119,7 +119,7 @@ Try Catch Finally
             and cleanup.
         .
 
-    fn+ try catch always:
+    fn+ try catch:
         try:
             something that may break
             something else;
@@ -268,15 +268,14 @@ Try Catch Finally Erlang
 
     -module('try').
 
-    -export([try_catch_always/0, try_catch_always/0,
-             try_always/0]).
+    -export([try_catch_always/0, try_catch/0, try_always/0]).
 
     try_always() ->
         try something_that_may_break(), something_else() after
           try_to_recover(), and_cleanup()
         end.
 
-    try_catch_always() ->
+    try_catch() ->
         try something_that_may_break(), something_else() catch
           T -> handle_throw(T);
           error:E -> handle_error(E);
@@ -320,6 +319,7 @@ Works
 * if expression (when in interfix)
 * case .. of
 * receive/after
+* try/catch/finally
 * function calls, local and to other modules
 * erlang interop
 * ints, floats, atoms, strings
