@@ -34,7 +34,7 @@ to_mod(Path) ->
             ToMod = fun () ->
                             ModAttr = {attribute, 1, module, ModAtomName},
                             FileAttr = {attribute, 1, file, {Path, 1}},
-                            ExportAttr = {attribute, 1, export, Exports},
+                            ExportAttr = {attribute, 1, export, lists:reverse(Exports)},
                             {ok, [FileAttr, ModAttr, ExportAttr|Ast]}
                     end,
             format_errors_or(ModAtomName, State, ToMod);
