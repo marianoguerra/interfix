@@ -145,6 +145,24 @@ Try Catch Finally
             and cleanup.
         .
 
+Begin End
+---------
+
+.. code-block:: ruby
+
+    fn+ simple do with A:
+        do:
+            some stuff with A
+            and some other stuff
+            A + 2.
+        .
+            
+    fn+ do with A as value:
+        with result of do (do:
+            some stuff with A
+            and some other stuff
+            A + 2).
+
 As you can see there are no commas, no parenthesis, no reserved keywords and
 functions receive parameter "interfixed" between function name tokens, this
 allows thinks like:
@@ -292,6 +310,25 @@ Try Catch Finally Erlang
         after
           try_to_recover(), and_cleanup()
         end.
+
+Begin End Erlang
+----------------
+
+.. code-block:: erlang
+
+    -module(do).
+
+    -export([simple_do_with/1, do_with_O_as_value/1]).
+
+    simple_do_with(A) ->
+        begin
+          some_stuff_with(A), and_some_other_stuff(), A + 2
+        end.
+
+    do_with_O_as_value(A) ->
+        with_result_of_do(begin
+                            some_stuff_with(A), and_some_other_stuff(), A + 2
+                          end).
 
 
 Build

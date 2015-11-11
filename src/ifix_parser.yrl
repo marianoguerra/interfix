@@ -24,12 +24,12 @@ tl_expr -> call : '$1'.
 tl_expr -> call_block : '$1'.
 
 call -> call_items : {call, line('$1'), parse_call_items('$1')}.
-call_block -> call_blocks : {cb, line('$1'), '$1'}.
+call_block -> call_blocks dot : {cb, line('$1'), '$1'}.
 
 call_block_1 -> call colon tl_exprs : {clause, line('$1'), {'$1', '$3'}}.
 
-call_blocks -> call_block_1 dot : ['$1'].
-call_blocks -> call_block_1 semicolon dot : ['$1'].
+call_blocks -> call_block_1: ['$1'].
+call_blocks -> call_block_1 semicolon: ['$1'].
 call_blocks -> call_block_1 semicolon call_blocks : ['$1'|'$3'].
 
 call_items -> call_item : ['$1'].
@@ -66,6 +66,7 @@ literal -> float: '$1'.
 literal -> string : '$1'.
 literal -> bstring : '$1'.
 literal -> open call close : '$2'.
+literal -> open call_blocks close : {cb, line('$2'), '$2'}.
 
 Erlang code.
 

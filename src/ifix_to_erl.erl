@@ -109,6 +109,12 @@ convert(?CB(Line, Clauses=[?CCS([on, message, '_'])|_]), State) ->
             {error, {bad_expr, 'receive', Reason}, State}
     end;
 
+convert(?CB(Line, [?CL({call, _, {['do'], _}}, Body)]), State) ->
+    with_converted(Body, State,
+                   fun (State1, EBody) ->
+                           {ok, {'block', Line, EBody}, State1}
+                   end);
+
 convert(V={var, _, _}, State) -> {ok, V, State};
 convert(V={integer, _, _}, State) -> {ok, V, State};
 convert(V={float, _, _}, State) -> {ok, V, State};

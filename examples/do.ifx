@@ -1,0 +1,13 @@
+
+fn+ simple do with A:
+    do:
+        some stuff with A
+        and some other stuff
+        A + 2.
+    .
+        
+fn+ do with A as value:
+    with result of do (do:
+        some stuff with A
+        and some other stuff
+        A + 2).
