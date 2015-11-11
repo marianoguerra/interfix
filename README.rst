@@ -76,8 +76,26 @@ First some working examples:
         else:        print :other.
         .
 
-As you can see there are no commas, no parenthesis and functions receive
-parameter "interfixed" between function name tokens, this allows thinks like:
+.. code-block:: ruby
+
+    fn+ receive one:
+        on message 43: do something here.
+        .
+
+    fn+ receive two:
+        on message 43: do something here;
+        on message :a: something else.
+        .
+
+    fn+ receive two and timeout:
+        on message 43: do something here;
+        on message :a: something else;
+        after 50 milliseconds: do timeout thing.
+        .
+
+As you can see there are no commas, no parenthesis, no reserved keywords and
+functions receive parameter "interfixed" between function name tokens, this
+allows thinks like:
 
 .. code-block:: ruby
 
@@ -119,7 +137,7 @@ The code in the previous examples compiles to:
            true -> log_warn("wat")
         end.
 
-.. code-block:: ruby
+.. code-block:: erlang
 
     -module(ifis).
 
@@ -156,6 +174,27 @@ The code in the previous examples compiles to:
           _ -> print(other)
         end.
 
+.. code-block:: erlang
+
+    -module('receive').
+
+    -export([receive_two_and_timeout/0, receive_two/0,
+             receive_one/0]).
+
+    receive_one() -> receive 43 -> do_something_here() end.
+
+    receive_two() ->
+        receive
+          43 -> do_something_here();
+          a -> something_else()
+        end.
+
+    receive_two_and_timeout() ->
+        receive
+          43 -> do_something_here();
+          a -> something_else()
+          after 50 -> do_timeout_thing()
+        end.
 
 
 Build
@@ -182,6 +221,7 @@ Works
 * multi clause functions (no when clauses)
 * if expression (when in interfix)
 * case .. of
+* receive/after
 * function calls, local and to other modules
 * erlang interop
 * ints, floats, atoms, strings

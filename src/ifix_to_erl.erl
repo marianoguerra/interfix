@@ -74,7 +74,24 @@ convert(?CB(Line, Clauses=[?CCS(['if', '_', is, '_'])|_]), State) ->
             R = {'case', Line, EMatch, EClauses},
             {ok, R, State1};
         {error, Reason} ->
-            {error, {bad_expr, 'when', Reason}, State}
+            {error, {bad_expr, 'case', Reason}, State}
+    end;
+
+convert(?CB(Line, Clauses=[?CCS([on, message, '_'])|_]), State) ->
+    case check_clauses_shape(Clauses, [on, message, '_'], [on, message, '_'],
+                             ['after', '_', milliseconds]) of
+        ok ->
+            Vs = with_clauses(Clauses, State, fun convert_recv_clauses/6, []),
+            case Vs of
+                {[{'after', _,  ETimeout, EAfterBody}|EClauses], State1} ->
+                    R = {'receive', Line, EClauses, ETimeout, EAfterBody},
+                    {ok, R, State1};
+                {EClauses, State1} ->
+                    R = {'receive', Line, EClauses},
+                    {ok, R, State1}
+            end;
+        {error, Reason} ->
+            {error, {bad_expr, 'receive', Reason}, State}
     end;
 
 convert(V={var, _, _}, State) -> {ok, V, State};
@@ -207,7 +224,8 @@ map_op('!=') -> '=/='.
 convert_nodes(Nodes, State) ->
     R = lists:foldl(fun (Node, {Status, Accum, StateIn}) ->
                             case convert(Node, StateIn) of
-                                {ok, R, StateOut} -> {Status, [R|Accum], StateOut};
+                                {ok, R, StateOut} ->
+                                    {Status, [R|Accum], StateOut};
                                 {error, Error, StateOut} ->
                                     {error, Accum, add_error(StateOut, Node, Error)}
                             end
@@ -303,12 +321,27 @@ convert_case_clauses(Line, 'else', [], [], Body, State) ->
         Other -> Other
     end.
 
+convert_recv_clauses(Line, 'on', [message, '_'], [Match], Body, State) ->
+    with_converted([Match], Body, State,
+                   fun (State1, [EMatch], EBody) ->
+                           R = {clause, Line, [EMatch], [], EBody},
+                           {ok, R, State1}
+                   end);
+convert_recv_clauses(Line, 'after', ['_', milliseconds], [AfterExpr], Body, State) ->
+    with_converted([AfterExpr], Body, State,
+                   fun (State1, [EAfter], EBody) ->
+                           R = {'after', Line, EAfter, EBody},
+                           {prepend, R, State1}
+                   end).
+
 with_clauses([], State, _Fun, Accum) ->
     {lists:reverse(Accum), State};
 with_clauses([Clause=?CL(?C(Line, [Type|Rest], Args), Body)|T], State, Fun, Accum) ->
     case Fun(Line, Type, Rest, Args, Body, State) of
         {ok, R, State1} ->
             with_clauses(T, State1, Fun, [R|Accum]);
+        {prepend, R, State1} ->
+            with_clauses(T, State1, Fun, Accum ++ [R]);
         {error, Reason, State1} ->
             State2 = add_error(State1, Clause, Reason),
             with_clauses(T, State2, Fun, Accum)

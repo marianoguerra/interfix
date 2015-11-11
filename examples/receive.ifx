@@ -1,0 +1,14 @@
+fn+ receive one:
+    on message 43: do something here.
+    .
+
+fn+ receive two:
+    on message 43: do something here;
+    on message :a: something else.
+    .
+
+fn+ receive two and timeout:
+    on message 43: do something here;
+    on message :a: something else;
+    after 50 milliseconds: do timeout thing.
+    .
