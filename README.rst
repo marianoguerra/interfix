@@ -330,7 +330,6 @@ Begin End Erlang
                             some_stuff_with(A), and_some_other_stuff(), A + 2
                           end).
 
-
 Build
 -----
 
@@ -359,9 +358,9 @@ Works
 * try/catch/finally
 * function calls, local and to other modules
 * erlang interop
-* ints, floats, atoms, strings
-* lists, tuples
-* bin, arithmetic, bool operations
+* ints, floats, atoms, strings, binary strings
+* lists, tuples, cons lists
+* bin, arithmetic, bool, comparisson operations
 
 Missing
 .......

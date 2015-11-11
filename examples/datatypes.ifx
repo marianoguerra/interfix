@@ -1,0 +1,17 @@
+
+fn+ data types examples:
+    an int 42
+    a float 1.5 
+    an atom :foo
+    nil is :nil
+    booleans are atoms too :true and :false
+    an empty list []
+    a list with some items [1 2.5 :true :nil [] [:bar]]
+    an empty tuple #[]
+    a tuple with some items #[1 2.5 :true :nil [] [:bar]]
+    a cons (cons 1 [])
+    improper list (cons 1 2)
+    nested conses (cons 1 (cons 2 []))
+    a list string "hi there"
+    a binary string 'hi there too'.
+

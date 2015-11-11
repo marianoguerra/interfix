@@ -166,6 +166,11 @@ convert(?Op(Line, is, Left, Right), State) ->
                            {ok, {match, Line, ELeft, ERight}, State1}
                    end);
 
+convert(?C(Line, [cons, '_', '_'], [H, T]), State) ->
+    with_converted([H, T], State,
+                   fun (State1, [EH, ET]) ->
+                           {ok, {cons, Line, EH, ET}, State1}
+                   end);
 convert(?C(['_'], [V]), State) ->
     convert(V, State);
 convert(?C(Line, Names=[First|_], Args), State) when First /= '_' ->
