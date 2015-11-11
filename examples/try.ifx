@@ -8,7 +8,7 @@ fn+ try always:
         and cleanup.
     .
 
-fn+ try catch always:
+fn+ try catch:
     try:
         something that may break
         something else;
