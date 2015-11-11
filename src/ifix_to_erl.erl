@@ -119,6 +119,9 @@ convert(V={var, _, _}, State) -> {ok, V, State};
 convert(V={integer, _, _}, State) -> {ok, V, State};
 convert(V={float, _, _}, State) -> {ok, V, State};
 convert(V={string, _, _}, State) -> {ok, V, State};
+convert({bstring, Line, Val}, State) ->
+    R = {bin, Line, [{bin_element, Line, {string, Line, Val}, default, default}]},
+   {ok, R, State};
 convert({kw, Line, Val}, State) -> {ok, {atom, Line, Val}, State};
 convert({list, Line, Val}, State) ->
     {R, State1} = list_to_cons_list(Line, Val, State),
