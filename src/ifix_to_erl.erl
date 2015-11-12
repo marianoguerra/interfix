@@ -203,10 +203,8 @@ convert(?C(Line, [cons, '_', '_'], [H, T]), State) ->
 convert(?C(['_'], [V]), State) ->
     convert(V, State);
 
-convert(?C(Line, Names=[First|_], Args), State) when First /= '_' ->
-    Name = to_call_name(Line, Names),
-    {EArgs, State1} = to_erl(Args, [], State),
-    {ok, {call, Line, Name, EArgs}, State1};
+convert(Call=?C([First|_]), State) when First /= '_' ->
+    convert_call(Call, State);
 
 convert(?C(Line, ['_', {split, _, _}, '_'|_Names],
          [?V(VMLine, ModName), ?V(VFLine, FunName)|Args]), State) ->
@@ -218,6 +216,15 @@ convert(?C(Line, ['_', {split, _, _}, '_'|_Names],
 convert(?C(Line, _Names, [?V(VLine, FunName)|Args]), State) ->
     {EArgs, State1} = to_erl(Args, [], State),
     {ok, {call, Line, {var, VLine, FunName}, EArgs}, State1};
+
+convert(Call=?C(Line, [_|Names], [?KW(VLine, Name)|Args]), State) ->
+    case all_values(Names) of
+        true ->
+            {EArgs, State1} = to_erl(Args, [], State),
+            {ok, {tuple, Line, [{atom, VLine, Name}|EArgs]}, State1};
+        false ->
+            convert_call(Call, State)
+    end;
 
 convert(_, State) ->
     {error, unknown_node, State}.
@@ -518,3 +525,13 @@ check_clauses_shape([], _First, _Middle, _Last, false) ->
     ok;
 check_clauses_shape([Other], _First, _Middle, _Last, false) ->
     {error, {bad_last, Other}}.
+
+all_values([]) -> true;
+all_values(['_'|T]) -> all_values(T);
+all_values(_) -> false.
+
+convert_call(?C(Line, Names, Args), State) ->
+    Name = to_call_name(Line, Names),
+    {EArgs, State1} = to_erl(Args, [], State),
+    {ok, {call, Line, Name, EArgs}, State1}.
+

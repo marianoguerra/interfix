@@ -10,5 +10,6 @@
 -define(Op(Line, Op, Left), {call, Line, {[Op, '_'], [Left]}}).
 
 -define(V(Line, Name), {var, Line, Name}).
+-define(KW(Line, Name), {kw, Line, Name}).
 % clause call shape
 -define(CCS(Shape), {clause, _, {{call, _, {Shape, _}}, _}}).
