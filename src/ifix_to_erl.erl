@@ -36,6 +36,22 @@ convert_fn_clauses([?CL(Line, ?C([_Fn|FName], CArgs), Body)|T], Name, Arity, Acc
            convert_fn_clauses(T, Name, Arity, [EClause|Accum], State2)
     end.
 
+convert(?C(Line, [fn, ref, FName, '_'], [{integer, _, Arity}]), State)
+         when FName /= '_' ->
+    {ok, {'fun', Line, {function, FName, Arity}}, State};
+
+convert(?C(Line, [fn, ref, ModName, FName, '_'], [{integer, _, Arity}]), State)
+         when ModName /= '_', FName /= '_' ->
+    {ok, {'fun', Line, {function, ModName, FName, Arity}}, State};
+
+convert(?C(Line, [fn, ref|Names], _), State) ->
+    Arity = length(lists:filter(fun('_') -> true; (_) -> false end, Names)),
+    case to_name(Names) of
+        [FName] ->
+            {ok, {'fun', Line, {function, FName, Arity}}, State};
+        [ModName, FName] ->
+            {ok, {'fun', Line, {function, ModName, FName, Arity}}, State}
+    end;
 
 convert(?CB(Line, Clauses=[?CL(?C([Fn|_FName]))|_]), State=#{level := Level})
         when Fn == 'fn'; Fn == 'fn+' ->
@@ -186,6 +202,7 @@ convert(?C(Line, [cons, '_', '_'], [H, T]), State) ->
                    end);
 convert(?C(['_'], [V]), State) ->
     convert(V, State);
+
 convert(?C(Line, Names=[First|_], Args), State) when First /= '_' ->
     Name = to_call_name(Line, Names),
     {EArgs, State1} = to_erl(Args, [], State),

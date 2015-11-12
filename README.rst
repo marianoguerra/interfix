@@ -182,7 +182,11 @@ Data Types
         improper list (cons 1 2)
         nested conses (cons 1 (cons 2 []))
         a list string "hi there"
-        a binary string 'hi there too'.
+        a binary string 'hi there too'
+        function reference (fn ref divideby 2)
+        function reference (fn ref `other_module` divideby 2)
+        fun ref by name (fn ref divide _ by _)
+        fun ref by name (fn ref other module :: divide _ by _).
 
 Anonymous Functions
 -------------------
@@ -373,7 +377,11 @@ Data Types Erlang
         improper_list([1 | 2]),
         nested_conses([1, 2]),
         a_list_string("hi there"),
-        a_binary_string(<<"hi there too">>).
+        a_binary_string(<<"hi there too">>),
+        function_reference(fun divideby/2),
+        function_reference(fun other_module:divideby/2),
+        fun_ref_by_name(fun divide_O_by/2),
+        fun_ref_by_name(fun other_module:divide_O_by/2).
 
 Anonymous Functions Erlang
 --------------------------

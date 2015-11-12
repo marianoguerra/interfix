@@ -13,5 +13,9 @@ fn+ data types examples:
     improper list (cons 1 2)
     nested conses (cons 1 (cons 2 []))
     a list string "hi there"
-    a binary string 'hi there too'.
+    a binary string 'hi there too'
+    function reference (fn ref divideby 2)
+    function reference (fn ref `other_module` divideby 2)
+    fun ref by name (fn ref divide _ by _)
+    fun ref by name (fn ref other module :: divide _ by _).
 
