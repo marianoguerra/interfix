@@ -1,0 +1,6 @@
+
+fn+ call examples Mod Fun:
+    "not implemented: module name :: Fun 42"
+    Fun 42 :true
+    Mod :: Fun 42 :true.
+    

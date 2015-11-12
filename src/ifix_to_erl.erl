@@ -208,6 +208,17 @@ convert(?C(Line, Names=[First|_], Args), State) when First /= '_' ->
     {EArgs, State1} = to_erl(Args, [], State),
     {ok, {call, Line, Name, EArgs}, State1};
 
+convert(?C(Line, ['_', {split, _, _}, '_'|_Names],
+         [?V(VMLine, ModName), ?V(VFLine, FunName)|Args]), State) ->
+    {EArgs, State1} = to_erl(Args, [], State),
+    {ok, {call, Line,
+          {remote, Line, {var, VMLine, ModName}, {var, VFLine, FunName}},
+          EArgs}, State1};
+
+convert(?C(Line, _Names, [?V(VLine, FunName)|Args]), State) ->
+    {EArgs, State1} = to_erl(Args, [], State),
+    {ok, {call, Line, {var, VLine, FunName}, EArgs}, State1};
+
 convert(_, State) ->
     {error, unknown_node, State}.
 
