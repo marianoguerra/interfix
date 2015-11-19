@@ -25,3 +25,42 @@ fn+ check all A:
     if it is 32: print 32;
     else:        print :other.
     .
+fn+ check if A B guard:
+    if A is 12 :: when (is integer B): print 12.
+    .
+
+fn+ check if else A B guard:
+    if A is 12 :: when B < 10:
+        print 12;
+    else:
+        print :other.
+    .
+
+fn+ check if 1 else it A B guard:
+    if A  is 12 :: when B > 5:
+        print 12;
+    if it is 32 :: when B > 12 :: when B < A:
+        print 32;
+    else:
+        print :other.
+    .
+
+fn+ check if 2 else it A guard:
+    if A  is 12:
+        print 12;
+    if it is 32 :: when B is 23:
+        print 32;
+    if it is 33 :: when B > 12 :: when B < A:
+        print 32;
+    else:
+        print :other.
+    .
+
+fn+ check all A guard:
+    if A  is 12 :: when B > 5:
+        print 12;
+    if it is 32:
+        print 32;
+    else:
+        print :other.
+    .

@@ -12,3 +12,18 @@ fn+ receive two and timeout:
     on message :a: something else;
     after 50 milliseconds: do timeout thing.
     .
+
+fn+ receive one guard:
+    on message A :: when A < 10: do something here.
+    .
+
+fn+ receive two guard:
+    on message A :: when A < 10 :: when A > 0: do something here;
+    on message B :: when (is interger B): something else.
+    .
+
+fn+ receive two guard and timeout:
+    on message A :: when A < 10 :: when A > 0: do something here;
+    on message B :: when (is interger B): something else;
+    after 50 milliseconds: do timeout thing.
+    .

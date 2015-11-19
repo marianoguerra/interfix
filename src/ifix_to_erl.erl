@@ -159,8 +159,8 @@ convert(?CB(Line, Clauses=[?CL(?C(['when'|_FName]))|_]), State) ->
             {error, {bad_expr, 'when', Reason}, State}
     end;
 
-convert(?CB(Line, Clauses=[?CCS(['if', '_', is, '_'])|_]), State) ->
-    case check_clauses_shape(Clauses, ['if', '_', is, '_'], ['if', it, is, '_'], [else]) of
+convert(?CB(Line, Clauses=[?CCS(['if', '_', is, '_'|_])|_]), State) ->
+    case check_clauses_shape(Clauses, fun check_case_shape/2) of
         ok ->
             {MEClauses, State1} = with_clauses(Clauses, State,
                                        fun convert_case_clauses/6, []),
@@ -187,9 +187,8 @@ convert(?CB(Line, Clauses=[?CCS(['try'])|_]), State) ->
         {error, Reason} ->
             {error, {bad_expr, 'try', Reason}, State}
     end;
-convert(?CB(Line, Clauses=[?CCS([on, message, '_'])|_]), State) ->
-    case check_clauses_shape(Clauses, [on, message, '_'], [on, message, '_'],
-                             ['after', '_', milliseconds]) of
+convert(?CB(Line, Clauses=[?CCS([on, message, '_'|_])|_]), State) ->
+    case check_clauses_shape(Clauses, fun check_recv_shape/2) of 
         ok ->
             Vs = with_clauses(Clauses, State, fun convert_recv_clauses/6, []),
             case Vs of
@@ -444,17 +443,21 @@ convert_when_clauses(Line, 'else', [], [], Body, State) ->
         Other -> Other
     end.
 
-convert_case_clauses(Line, 'if', ['_', is, '_'], [Expr, Match], Body, State) ->
-    with_converted([Expr, Match], Body, State,
-                   fun (State1, [EExpr, EMatch], EBody) ->
-                           R = [EExpr, {clause, Line, [EMatch], [], EBody}],
-                           {ok, R, State1}
+convert_case_clauses(Line, 'if', ['_', is, '_'|GNames], [Expr, Match|GArgs], Body, State) ->
+    {_, Guards} = split_guards(GNames, GArgs),
+    {EGuards, State1} = guards_to_erl(Guards, State),
+    with_converted([Expr, Match], Body, State1,
+                   fun (State2, [EExpr, EMatch], EBody) ->
+                           R = [EExpr, {clause, Line, [EMatch], EGuards, EBody}],
+                           {ok, R, State2}
                    end);
-convert_case_clauses(Line, 'if', [it, is, '_'], [Match], Body, State) ->
-    with_converted([Match], Body, State,
-                   fun (State1, [EMatch], EBody) ->
-                           R = {clause, Line, [EMatch], [], EBody},
-                           {ok, R, State1}
+convert_case_clauses(Line, 'if', [it, is, '_'|GNames], [Match|GArgs], Body, State) ->
+    {_, Guards} = split_guards(GNames, GArgs),
+    {EGuards, State1} = guards_to_erl(Guards, State),
+    with_converted([Match], Body, State1,
+                   fun (State2, [EMatch], EBody) ->
+                           R = {clause, Line, [EMatch], EGuards, EBody},
+                           {ok, R, State2}
                    end);
 convert_case_clauses(Line, 'else', [], [], Body, State) ->
     case to_erl(Body, State) of
@@ -464,11 +467,13 @@ convert_case_clauses(Line, 'else', [], [], Body, State) ->
         Other -> Other
     end.
 
-convert_recv_clauses(Line, 'on', [message, '_'], [Match], Body, State) ->
-    with_converted([Match], Body, State,
-                   fun (State1, [EMatch], EBody) ->
-                           R = {clause, Line, [EMatch], [], EBody},
-                           {ok, R, State1}
+convert_recv_clauses(Line, 'on', [message, '_'|GNames], [Match|GArgs], Body, State) ->
+    {_, Guards} = split_guards(GNames, GArgs),
+    {EGuards, State1} = guards_to_erl(Guards, State),
+    with_converted([Match], Body, State1,
+                   fun (State2, [EMatch], EBody) ->
+                           R = {clause, Line, [EMatch], EGuards, EBody},
+                           {ok, R, State2}
                    end);
 convert_recv_clauses(Line, 'after', ['_', milliseconds], [AfterExpr], Body, State) ->
     with_converted([AfterExpr], Body, State,
@@ -561,6 +566,25 @@ check_try_shape(?CCS(['catch', '_', '_']), last) -> ok;
 check_try_shape(?CCS(['always']), last) -> ok;
 check_try_shape(?CCS(Other), Pos) -> {error, {bad_try_clause, Pos, Other}}.
 
+
+check_case_shape(?CCS(['if', '_', is, '_']), first) -> ok;
+check_case_shape(?CCS(['if', '_', is, '_', {split, _, _}|_]), first) -> ok;
+check_case_shape(?CCS(['if', it, is, '_']), middle) -> ok;
+check_case_shape(?CCS(['if', it, is, '_', {split, _, _}|_]), middle) -> ok;
+check_case_shape(?CCS(['if', it, is, '_']), last) -> ok;
+check_case_shape(?CCS(['if', it, is, '_', {split, _, _}|_]), last) -> ok;
+check_case_shape(?CCS([else]), last) -> ok;
+check_case_shape(?CCS(Other), Pos) -> {error, {bad_case_clause, Pos, Other}}.
+
+check_recv_shape(?CCS([on, message, '_']), first) -> ok;
+check_recv_shape(?CCS([on, message, '_', {split, _, _}|_]), first) -> ok;
+check_recv_shape(?CCS([on, message, '_']), middle) -> ok;
+check_recv_shape(?CCS([on, message, '_', {split, _, _}|_]), middle) -> ok;
+check_recv_shape(?CCS([on, message, '_']), last) -> ok;
+check_recv_shape(?CCS([on, message, '_', {split, _, _}|_]), last) -> ok;
+check_recv_shape(?CCS(['after', '_', milliseconds]), last) -> ok;
+check_recv_shape(?CCS(Other), Pos) -> {error, {bad_receive_clause, Pos, Other}}.
+
 check_lambda_shape(?CCS(['fn'|Names]), _) ->
     case lists:all(fun ('_') -> true; (_) -> false end, drop_guards(Names)) of
         true -> ok;
@@ -575,24 +599,6 @@ check_clauses_same_arity([?CCS(['fn'|FNames])|Clauses]) ->
                            true  -> Status
                         end
                 end, ok, Clauses).
-
-check_clauses_shape(Clauses, First, Middle, Last) ->
-    check_clauses_shape(Clauses, First, Middle, Last, true).
-
-check_clauses_shape([?CCS(First)|T], First, Middle, Last, true) ->
-    check_clauses_shape(T, First, Middle, Last, false);
-check_clauses_shape([Other|_], _First, _Middle, _Last, true) ->
-    {error, {bad_first, Other}};
-check_clauses_shape([?CCS(Middle)|T], First, Middle, Last, false) ->
-    check_clauses_shape(T, First, Middle, Last, false);
-check_clauses_shape([Other|[_|_]], _First, _Middle, _Last, true) ->
-    {error, {bad_middle, Other}};
-check_clauses_shape([?CCS(Last)], _First, _Middle, Last, false) ->
-    ok;
-check_clauses_shape([], _First, _Middle, _Last, false) ->
-    ok;
-check_clauses_shape([Other], _First, _Middle, _Last, false) ->
-    {error, {bad_last, Other}}.
 
 all_values([]) -> true;
 all_values(['_'|T]) -> all_values(T);
