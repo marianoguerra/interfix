@@ -422,9 +422,6 @@ Run
 Compile Stuff
 -------------
 
-CLI Reference
--------------
-
 To compile to bytecode run "interfix bean <src-file> <dest-path>"::
 
     $ ./interfix beam examples/samples.ifx .
@@ -444,6 +441,34 @@ can use if from the erlang shell::
 
     2> q().
     ok
+
+CLI Reference
+-------------
+
+The CLI tool has the following general syntax::
+
+    interfix <command> <arg1> [<arg2>]
+
+Here are the allowed commands and the arguments they take:
+
+interfix lex <path>
+    prints the lexer output of the interfix source file located at <path>
+
+interfix ast <path>
+    prints the ast output of the interfix source file located at <path>
+
+interfix erl <path>
+    prints the equivalent erlang source code of the interfix source file located at <path>
+
+interfix erlast <path>
+    prints the equivalent erlang ast of the interfix source file located at <path>
+
+interfix mod <path>
+    prints the equivalent erlang ast with module information of the interfix source file located at <path>
+
+interfix beam <path> <dest-path>
+    compiles interfix module at <path> to bytecode and writes the beam file
+    at <dest-path>
 
 Status
 ------
