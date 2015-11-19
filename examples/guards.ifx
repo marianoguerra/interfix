@@ -1,5 +1,5 @@
 
-fn+ to string V and A :: when (is integer V) :: when A < V:
+fn+ to string V and A :: when (is integer V) :: when A < V :: when A != 2:
     integer to list V.
 
 fn+ lambda with guards 1:
