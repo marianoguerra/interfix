@@ -487,24 +487,29 @@ convert_try_clauses(Line, 'try', [], [], Body, State) ->
                    fun (State1, EBody) ->
                            {ok, {'try', Line, EBody}, State1}
                    end);
-convert_try_clauses(Line, 'catch', [Type, '_'], [Catch], Body, State) when is_atom(Type) ->
-    with_converted([Catch], Body, State,
-                   fun (State1, [ECatch], EBody) ->
-                           R = {clause, Line,
-                                [{tuple, Line, [{atom, Line, Type}, ECatch,
-                                                {var, Line, '_'}]}],
-                                [], EBody},
-                           {ok, R, State1}
-                   end);
 
-convert_try_clauses(Line, 'catch', ['_', '_'], [Type, Catch], Body, State) ->
-    with_converted([Type, Catch], Body, State,
-                   fun (State1, [EType, ECatch], EBody) ->
+convert_try_clauses(Line, 'catch', ['_', '_'|GNames], [Type, Catch|GArgs], Body, State) ->
+    {_, Guards} = split_guards(GNames, GArgs),
+    {EGuards, State1} = guards_to_erl(Guards, State),
+    with_converted([Type, Catch], Body, State1,
+                   fun (State2, [EType, ECatch], EBody) ->
                            R = {clause, Line,
                                 [{tuple, Line, [EType, ECatch,
                                                 {var, Line, '_'}]}],
-                                [], EBody},
-                           {ok, R, State1}
+                                EGuards, EBody},
+                           {ok, R, State2}
+                   end);
+
+convert_try_clauses(Line, 'catch', [Type, '_'|GNames], [Catch|GArgs], Body, State) ->
+    {_, Guards} = split_guards(GNames, GArgs),
+    {EGuards, State1} = guards_to_erl(Guards, State),
+    with_converted([Catch], Body, State1,
+                   fun (State2, [ECatch], EBody) ->
+                           R = {clause, Line,
+                                [{tuple, Line, [{atom, Line, Type}, ECatch,
+                                                {var, Line, '_'}]}],
+                                EGuards, EBody},
+                           {ok, R, State2}
                    end);
 
 convert_try_clauses(Line, 'always', [], [], Body, State) ->
@@ -554,14 +559,22 @@ next_pos(last, _) -> 'end'. % shouldn't be used
 
 check_try_shape(?CCS(['try']), first) -> ok;
 check_try_shape(?CCS(['catch', error, '_']), middle) -> ok;
+check_try_shape(?CCS(['catch', error, '_', {split, _, _}|_]), middle) -> ok;
 check_try_shape(?CCS(['catch', throw, '_']), middle) -> ok;
+check_try_shape(?CCS(['catch', throw, '_', {split, _, _}|_]), middle) -> ok;
 check_try_shape(?CCS(['catch', exit, '_']), middle) -> ok;
+check_try_shape(?CCS(['catch', exit, '_', {split, _, _}|_]), middle) -> ok;
 check_try_shape(?CCS(['catch', '_', '_']), middle) -> ok;
+check_try_shape(?CCS(['catch', '_', '_', {split, _, _}|_]), middle) -> ok;
 
 check_try_shape(?CCS(['catch', error, '_']), last) -> ok;
+check_try_shape(?CCS(['catch', error, '_', {split, _, _}|_]), last) -> ok;
 check_try_shape(?CCS(['catch', throw, '_']), last) -> ok;
+check_try_shape(?CCS(['catch', throw, '_', {split, _, _}|_]), last) -> ok;
 check_try_shape(?CCS(['catch', exit, '_']), last) -> ok;
+check_try_shape(?CCS(['catch', exit, '_', {split, _, _}|_]), last) -> ok;
 check_try_shape(?CCS(['catch', '_', '_']), last) -> ok;
+check_try_shape(?CCS(['catch', '_', '_', {split, _, _}|_]), last) -> ok;
 
 check_try_shape(?CCS(['always']), last) -> ok;
 check_try_shape(?CCS(Other), Pos) -> {error, {bad_try_clause, Pos, Other}}.

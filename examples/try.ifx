@@ -34,3 +34,29 @@ fn+ try catch always:
         and cleanup.
     .
 
+fn+ try catch guards:
+    try:
+        something that may break
+        something else;
+
+    catch throw T :: when (is integer T) :: when T < 10: handle throw T;
+    catch error E :: when (is atom T): handle error E;
+    catch exit Ex: handle exit Ex;
+    catch Type E: handle Type E.
+    .
+
+fn+ try catch always guards:
+    try:
+        something that may break
+        something else;
+
+    catch throw T :: when (is integer T) :: when T < 10: handle throw T;
+    catch error E :: when (is atom T) :: when T != :foo: handle error E;
+    catch exit Ex: handle exit Ex;
+    catch Type E :: when T == E: handle Type E;
+
+    always:
+        try to recover
+        and cleanup.
+    .
+
