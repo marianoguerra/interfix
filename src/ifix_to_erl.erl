@@ -3,6 +3,10 @@
 
 -include("../include/ifix.hrl").
 
+-record(call, {names=[], args=[]}).
+-define(EMPTY_CALL, #call{names=[], args=[]}).
+-define(Call(Names, Args), #call{names=Names, args=Args}).
+
 to_erl(Ast) -> to_erl(Ast, #{errors => [], warnings => [], exported => [],
                              level => 0}).
 
@@ -18,22 +22,84 @@ to_erl([H|T], Accum, State) ->
 add_error(State=#{errors := Errors}, Ast, Error) ->
     State#{errors => [#{error => Error, code => Ast}|Errors]}.
 
+reverse_call(#call{names=Names, args=Args}) ->
+    #call{names=lists:reverse(Names), args=lists:reverse(Args)}.
 
-convert_fn_clauses(Clauses=[?CL(?C([_Fn|FName], Args))|_], State) ->
-    Arity = length(Args),
+split_guards(Names, Args) ->
+    split_guards(Names, Args, ?EMPTY_CALL, [], ?EMPTY_CALL, names).
+
+split_guards([], [], FCall, Guards, ?EMPTY_CALL, _) ->
+    {reverse_call(FCall), lists:reverse(lists:map(fun reverse_call/1, Guards))};
+split_guards(Names=[], Args=[], FCall, Guards, CurGuard, State) ->
+    split_guards(Names, Args, FCall, [CurGuard|Guards], ?EMPTY_CALL, State);
+
+
+split_guards([{split, _, _}|T], Args, FCall, Guards, CurGuard=?EMPTY_CALL, names) ->
+    split_guards(T, Args, FCall, Guards, CurGuard, guards);
+
+split_guards([{split, _, _}|T], Args, FCall, Guards, CurGuard=?EMPTY_CALL, State=guards) ->
+    split_guards(T, Args, FCall, Guards, CurGuard, State);
+
+split_guards([{split, _, _}|T], Args, FCall, Guards, CurGuard, State=guards) ->
+    split_guards(T, Args, FCall, [CurGuard|Guards], ?EMPTY_CALL, State);
+
+
+split_guards([Name='_'|T], [Arg|Args], ?Call(CNames, CArgs), Guards,
+             CurGuard=?EMPTY_CALL, State=names) ->
+    NewCall = ?Call([Name|CNames], [Arg|CArgs]),
+    split_guards(T, Args, NewCall, Guards, CurGuard, State);
+
+split_guards([Name='_'|T], [Arg|Args], FCall, Guards,
+             ?Call(CNames, CArgs), State=guards) ->
+    NewGuard = ?Call([Name|CNames], [Arg|CArgs]),
+    split_guards(T, Args, FCall, Guards, NewGuard, State);
+
+split_guards([Name|T], Args, ?Call(CNames, CArgs), Guards,
+             CurGuard=?EMPTY_CALL, State=names) ->
+    NewCall = ?Call([Name|CNames], CArgs),
+    split_guards(T, Args, NewCall, Guards, CurGuard, State);
+
+split_guards([Name|T], Args, FCall, Guards,
+             ?Call(CNames, CArgs), State=guards) ->
+    NewGuard = ?Call([Name|CNames], CArgs),
+    split_guards(T, Args, FCall, Guards, NewGuard, State).
+
+guards_to_erl(Guards, State) -> guards_to_erl(Guards, State, []).
+
+guards_to_erl([], State, Accum) ->
+    {lists:reverse(Accum), State};
+
+guards_to_erl([Guard=?Call(['when'|Names], Args)|T], State, Accum) ->
+    case convert(?C(2, Names, Args), State) of
+        {ok, R, State1} ->
+            guards_to_erl(T, State1, [R|Accum]);
+        {error, Error, State1} ->
+            State2 = add_error(State1, Guard, Error),
+            guards_to_erl(T, State2, Accum)
+    end;
+guards_to_erl([Other|T], State, Accum) ->
+    State1 = add_error(State, Other, invalid_guard),
+    guards_to_erl(T, State1, Accum).
+
+
+convert_fn_clauses(Clauses=[?CL(?C([_Fn|FNames], Args))|_], State) ->
+    {#call{names=FName, args=FArgs}, _Guards} = split_guards(FNames, Args),
+    Arity = length(FArgs),
     convert_fn_clauses(Clauses, FName, Arity, [], State).
 
 convert_fn_clauses([], Name, Arity, Accum, State) ->
     {ok, to_name(Name), Arity, lists:reverse(Accum), State};
-convert_fn_clauses([?CL(Line, ?C([_Fn|FName], CArgs), Body)|T], Name, Arity, Accum, State) ->
-    CurArity = length(CArgs),
+convert_fn_clauses([?CL(Line, ?C([_Fn|FNames], CArgs), Body)|T], Name, Arity, Accum, State) ->
+    {#call{names=FName, args=FArgs}, Guards} = split_guards(FNames, CArgs),
+    CurArity = length(FArgs),
     if CurArity /= Arity -> {error, head_arity_mismatch, State};
        FName /= Name -> {error, head_name_mismatch, State};
        true ->
            {EBody, State1} = to_erl(Body, [], State),
-           {EArgs, State2} = to_erl(CArgs, [], State1),
-           EClause = {clause, Line, EArgs, [], EBody},
-           convert_fn_clauses(T, Name, Arity, [EClause|Accum], State2)
+           {EArgs, State2} = to_erl(FArgs, [], State1),
+           {EGuards, State3} = guards_to_erl(Guards, State2),
+           EClause = {clause, Line, EArgs, EGuards, EBody},
+           convert_fn_clauses(T, Name, Arity, [EClause|Accum], State3)
     end.
 
 convert(?C(Line, [fn, ref, FName, '_'], [{integer, _, Arity}]), State)

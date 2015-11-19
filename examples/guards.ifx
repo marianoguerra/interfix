@@ -1,0 +1,3 @@
+
+fn+ to string V and A :: when (is integer V) :: when A < V:
+    integer to list V.
