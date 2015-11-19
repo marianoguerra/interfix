@@ -476,7 +476,7 @@ Status
 Works
 .....
 
-* multi clause functions (no when clauses)
+* multi clause functions
 * anonymous functions
 * if expression (when in interfix)
 * case .. of
