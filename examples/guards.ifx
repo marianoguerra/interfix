@@ -1,3 +1,23 @@
 
 fn+ to string V and A :: when (is integer V) :: when A < V:
     integer to list V.
+
+fn+ lambda with guards 1:
+    fn V A :: when (is integer V) :: when A < V:
+        integer to list V.;
+fn+ lambda with guards 2:
+    fn V A :: when (is integer V) :: when A < V:
+        integer to list V;
+    fn V A :: when (is float V) :: when A < V :: when V > 2.5:
+        float to list V.
+    .
+
+fn+ lambda without guards 1:
+    fn V A:
+        integer to list V.;
+fn+ lambda without guards 2:
+    fn V 1:
+        integer to list V;
+    fn V A:
+        float to list V.
+    .

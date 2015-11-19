@@ -508,10 +508,12 @@ convert_try_clauses(Line, 'always', [], [], Body, State) ->
                            {prepend, {'finally', Line, EBody}, State1}
                    end).
 
-convert_lambda_clauses(Line, 'fn', _Names, Args, Body, State) ->
-    with_converted(Args, Body, State,
+convert_lambda_clauses(Line, 'fn', FNames, Args, Body, State) ->
+    {#call{args=FArgs}, Guards} = split_guards(FNames, Args),
+    with_converted(FArgs, Body, State,
                    fun (State1, EArgs, EBody) ->
-                           {ok, {clause, Line, EArgs, [], EBody}, State1}
+                           {EGuards, State2} = guards_to_erl(Guards, State1),
+                           {ok, {clause, Line, EArgs, EGuards, EBody}, State2}
                    end).
 
 with_clauses([], State, _Fun, Accum) ->
@@ -560,15 +562,15 @@ check_try_shape(?CCS(['always']), last) -> ok;
 check_try_shape(?CCS(Other), Pos) -> {error, {bad_try_clause, Pos, Other}}.
 
 check_lambda_shape(?CCS(['fn'|Names]), _) ->
-    case lists:all(fun ('_') -> true; (_) -> false end, Names) of
+    case lists:all(fun ('_') -> true; (_) -> false end, drop_guards(Names)) of
         true -> ok;
         false -> {error, {bad_lambda_clause, {invalid_arguments, Names}}}
     end.
 
 check_clauses_same_arity([?CCS(['fn'|FNames])|Clauses]) ->
-    Arity = length(FNames),
+    Arity = length(drop_guards(FNames)),
     lists:foldl(fun (?CCS(['fn'|Names]), Status) ->
-                        CurArity = length(Names),
+                        CurArity = length(drop_guards(Names)),
                         if CurArity =/= Arity -> {error, head_mismatch};
                            true  -> Status
                         end
@@ -601,3 +603,8 @@ convert_call(?C(Line, Names, Args), State) ->
     {EArgs, State1} = to_erl(Args, [], State),
     {ok, {call, Line, Name, EArgs}, State1}.
 
+drop_guards(Names) -> drop_guards(Names, []).
+
+drop_guards([], Accum) -> lists:reverse(Accum);
+drop_guards([{split, _, _}|_], Accum) -> lists:reverse(Accum);
+drop_guards([H|T], Accum) -> drop_guards(T, [H|Accum]).
