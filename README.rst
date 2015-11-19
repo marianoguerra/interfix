@@ -419,6 +419,32 @@ Run
 
     ./interfix erl examples/tlfn.ifx
 
+Compile Stuff
+-------------
+
+CLI Reference
+-------------
+
+To compile to bytecode run "interfix bean <src-file> <dest-path>"::
+
+    $ ./interfix beam examples/samples.ifx .
+    [{warnings,[]},{module_name,samples}]
+
+A file called samples.beam should be in your current directory, now you
+can use if from the erlang shell::
+
+    $ erl
+    Erlang/OTP 18 [erts-7.0] [source] [64-bit] [smp:4:4] [async-threads:10] [kernel-poll:false]
+
+    Eshell V7.0  (abort with ^G)
+
+    1> samples:say_hello_to("mariano").
+    hello mariano!
+    ok
+
+    2> q().
+    ok
+
 Status
 ------
 

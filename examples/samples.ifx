@@ -1,0 +1,6 @@
+
+fn+ say hello to Name:
+    format "hello ~s!~n" with [Name].
+
+fn+ format Str with Args:
+    io :: format Str Args.
