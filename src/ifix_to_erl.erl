@@ -223,6 +223,24 @@ convert({list, Line, Val}, State) ->
 convert({tuple, Line, Val}, State) ->
     {EVal, State1} = to_erl(Val, [], State),
     {ok, {tuple, Line, EVal}, State1};
+
+convert({map, Line, Items}=Node, State) ->
+    State1 = if length(Items) rem 2 /= 0 ->
+                    add_error(State, Node, odd_number_of_map_items);
+                true -> State
+             end,
+
+    {PairsR, _} = lists:foldl(fun (Item, {Accum, nil}) ->
+                                      {Accum, Item};
+                                  (Item, {Accum, First}) ->
+                                      {[{First, Item}|Accum], nil}
+                              end, {[], nil}, Items),
+
+    Pairs = lists:reverse(PairsR),
+    {EPairs, State2} = convert_map_items(Pairs, State1),
+    R = {map, Line, EPairs},
+    {ok, R, State2};
+
 convert(?Op(Line, Op='+', Left, Right), State)  -> op(Line, Op, Left, Right, State);
 convert(?Op(Line, Op='-', Left, Right), State)  -> op(Line, Op, Left, Right, State);
 convert(?Op(Line, Op='*', Left, Right), State)  -> op(Line, Op, Left, Right, State);
@@ -253,6 +271,13 @@ convert(?Op(Line, Op='!=', Left, Right), State) -> op(Line, Op, Left, Right, Sta
 
 convert(?Op(Line, Op='not', Left), State) -> op(Line, Op, Left, State);
 convert(?Op(Line, Op='~', Left), State) -> op(Line, Op, Left, State);
+
+convert(?Op(Line, '#', Var={var, _, _}, Map={map, _, _}), State) ->
+    with_converted([Var, Map], State,
+                   fun (State1, [EVar, {map, _, EMapItems}]) ->
+                           R = {map, Line, EVar, EMapItems},
+                           {ok, R, State1}
+                   end);
 
 convert(?Op(Line, is, Left, Right), State) ->
     with_converted([Left, Right], State,
@@ -627,3 +652,31 @@ drop_guards(Names) -> drop_guards(Names, []).
 drop_guards([], Accum) -> lists:reverse(Accum);
 drop_guards([{split, _, _}|_], Accum) -> lists:reverse(Accum);
 drop_guards([H|T], Accum) -> drop_guards(T, [H|Accum]).
+
+convert_map_items(Pairs, State) -> convert_map_items(Pairs, State, []).
+
+convert_map_items([], State, Accum) ->
+    {lists:reverse(Accum), State};
+convert_map_items([{?C(KLine, ['_', '='], [Key]), Val}|T], State, Accum) ->
+    Fun = fun (State1, [EKey, EVal]) ->
+                  R = {map_field_exact, KLine, EKey, EVal},
+                  {ok, R, State1}
+          end,
+    convert_map_pair(Key, Val, State, Accum, T, Fun);
+
+convert_map_items([{Key, Val}|T], State, Accum) ->
+    Fun = fun (State1, [EKey, EVal]) ->
+                  KLine = element(2, EKey),
+                  R = {map_field_assoc, KLine, EKey, EVal},
+                  {ok, R, State1}
+          end,
+    convert_map_pair(Key, Val, State, Accum, T, Fun).
+
+
+convert_map_pair(Key, Val, State, Accum, T, Fun) ->
+    case with_converted([Key, Val], State, Fun) of
+        {ok, R, State1} ->
+            convert_map_items(T, State1, [R|Accum]);
+        {error, _, State1} ->
+            convert_map_items(T, State1, Accum)
+    end.

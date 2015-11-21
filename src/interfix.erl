@@ -106,7 +106,7 @@ format_errors_or(_Module, #{errors:=[]}, Fn) -> Fn();
 format_errors_or(Module, #{errors:=Errors}, _Fn) ->
     ErrorsFirstToLast = lists:reverse(Errors),
     lists:foreach(fun (#{error := Error, code := Ast}) ->
-                          Line = element(2, Ast),
+                          Line = line(Ast),
                           io:format("error:~p:~p: ~p~n~p~n~n", [Module, Line, Error, Ast])
                   end, ErrorsFirstToLast),
     {error, compile_errors}.
@@ -178,3 +178,6 @@ main(Args) ->
 %%====================================================================
 %% Internal functions
 %%====================================================================
+
+line({_, Line, _}) -> Line;
+line([{_, Line, _}|_]) -> Line.

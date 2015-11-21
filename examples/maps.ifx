@@ -1,0 +1,8 @@
+
+fn+ maps:
+    Empty is {}
+    One is {:a 42}
+    Two is {:a 42 :b 65}
+    Three is {:a 42 :b 65 :c 82}
+    {(:a =) A} is Three
+    Three1 is (Three # {:b 66 :c 92}).
