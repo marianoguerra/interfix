@@ -224,19 +224,8 @@ convert({tuple, Line, Val}, State) ->
     {EVal, State1} = to_erl(Val, [], State),
     {ok, {tuple, Line, EVal}, State1};
 
-convert({map, Line, Items}=Node, State) ->
-    State1 = if length(Items) rem 2 /= 0 ->
-                    add_error(State, Node, odd_number_of_map_items);
-                true -> State
-             end,
-
-    {PairsR, _} = lists:foldl(fun (Item, {Accum, nil}) ->
-                                      {Accum, Item};
-                                  (Item, {Accum, First}) ->
-                                      {[{First, Item}|Accum], nil}
-                              end, {[], nil}, Items),
-
-    Pairs = lists:reverse(PairsR),
+convert({map, Line, _Items}=Node, State) ->
+    {Pairs, State1} = group_map_items(Node, State),
     {EPairs, State2} = convert_map_items(Pairs, State1),
     R = {map, Line, EPairs},
     {ok, R, State2};
@@ -271,6 +260,25 @@ convert(?Op(Line, Op='!=', Left, Right), State) -> op(Line, Op, Left, Right, Sta
 
 convert(?Op(Line, Op='not', Left), State) -> op(Line, Op, Left, State);
 convert(?Op(Line, Op='~', Left), State) -> op(Line, Op, Left, State);
+
+convert(?C(Line, [RecName, '#', '_'], [Map={map, _, _}]), State) ->
+    {RFields, State1} = convert_record_fields(Map, State),
+    R = {record, Line, RecName, RFields},
+    {ok, R, State1};
+
+convert(?C(Line, [RecName, '#', '_', '_'], [Var={var, _, _}, Map={map, _, _}]), State) ->
+    {RFields, State1} = convert_record_fields(Map, State),
+    R = {record, Line, Var, RecName, RFields},
+    {ok, R, State1};
+
+convert(?C(Line, [RecName, '#', FieldName, '_'], [Var={var, _, _}]), State) ->
+    R = {record_field, Line, Var, RecName, {atom, Line, FieldName}},
+    {ok, R, State};
+
+convert(?C(Line, [RecName, '#', FieldName], []), State) ->
+    R = {record_index, Line, RecName, {atom, Line, FieldName}},
+    {ok, R, State};
+
 
 convert(?Op(Line, '#', Var={var, _, _}, Map={map, _, _}), State) ->
     with_converted([Var, Map], State,
@@ -680,3 +688,38 @@ convert_map_pair(Key, Val, State, Accum, T, Fun) ->
         {error, _, State1} ->
             convert_map_items(T, State1, Accum)
     end.
+
+convert_record_fields(Map, State) ->
+    {Pairs, State1} = group_map_items(Map, State),
+    convert_record_fields(Pairs, State1, []).
+
+convert_record_fields([], State, Accum) -> {lists:reverse(Accum), State};
+convert_record_fields([{{atom, KLine, K}, Val}|T], State, Accum) ->
+    case convert(Val, State) of
+        {ok, EVal, State1} ->
+            EField = {record_field, KLine, {atom, KLine, K}, EVal},
+            convert_record_fields(T, State1, [EField|Accum]);
+        {error, Reason, State1} ->
+            State2 = add_error(State1, Val, {bad_record_value, Reason}),
+            convert_record_fields(T, State2, Accum)
+    end;
+
+convert_record_fields([{Other, _Val}|T], State, Accum) ->
+    State1 = add_error(State, Other, bad_record_key),
+    convert_record_fields(T, State1, Accum).
+
+group_map_items({map, _Line, Items}=Node, State) ->
+    State1 = if length(Items) rem 2 /= 0 ->
+                    add_error(State, Node, odd_number_of_map_items);
+                true -> State
+             end,
+
+    {PairsR, _} = lists:foldl(fun (Item, {Accum, nil}) ->
+                                      {Accum, Item};
+                                  (Item, {Accum, First}) ->
+                                      {[{First, Item}|Accum], nil}
+                              end, {[], nil}, Items),
+
+    Pairs = lists:reverse(PairsR),
+    {Pairs, State1}.
+

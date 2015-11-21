@@ -57,6 +57,7 @@ seq_items -> seq_item : ['$1'].
 seq_items -> seq_item seq_items : ['$1'|'$2'].
 
 seq_item -> literal : '$1'.
+seq_item -> atom : '$1'.
 seq_item -> seq : '$1'.
 
 literal -> kw : '$1'.
