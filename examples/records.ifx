@@ -1,0 +1,6 @@
+fn+ records:
+    State is (state # {counter 1 last_modification (now)})
+    State1 is (state # State {counter 2})
+    Counter is (state # counter State)
+    CounterIdx = (state # counter)
+    (state # {counter Counter}) is State.
