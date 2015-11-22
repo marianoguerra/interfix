@@ -144,6 +144,9 @@ clean_tokens([{nl, _, _}, {nl, _, _}=H|T], Accum) -> clean_tokens([H|T], Accum);
 % remove newline before dots
 clean_tokens([{nl, _, _}, V={dot, _, _}|T], Accum) ->
     clean_tokens([V|T], Accum);
+% remove newline before splits
+clean_tokens([{nl, _, _}, V={split, _, _}|T], Accum) ->
+    clean_tokens([V|T], Accum);
 % remove last endline
 clean_tokens([{nl, _, _}], Accum) -> clean_tokens([], Accum);
 clean_tokens([H|T], Accum) -> clean_tokens(T, [H|Accum]).

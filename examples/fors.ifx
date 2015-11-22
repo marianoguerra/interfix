@@ -18,7 +18,9 @@ fn+ examples B:
     for A in B :: when A < 10:
         A + 1.
 
-    for A in B :: when A < 10 :: when (A % 2) == 0:
+    for A in B
+            :: when A < 10
+            :: when (A % 2) == 0:
         A + 1.
 
     for A in B :: when A < 10 :: C in B :: when (A % 2) == 0:
