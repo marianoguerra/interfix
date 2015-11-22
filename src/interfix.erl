@@ -141,9 +141,9 @@ clean_tokens([{colon, _, _}=H, {nl, _, _}|T], Accum) -> clean_tokens([H|T], Accu
 clean_tokens([{semicolon, _, _}=H, {nl, _, _}|T], Accum) -> clean_tokens([H|T], Accum);
 % remove duplicated endlines
 clean_tokens([{nl, _, _}, {nl, _, _}=H|T], Accum) -> clean_tokens([H|T], Accum);
-% remove newline between dots
-clean_tokens([V1={dot, _, _}, {nl, _, _}, V2={dot, _, _}|T], Accum) ->
-    clean_tokens([V1, V2|T], Accum);
+% remove newline before dots
+clean_tokens([{nl, _, _}, V={dot, _, _}|T], Accum) ->
+    clean_tokens([V|T], Accum);
 % remove last endline
 clean_tokens([{nl, _, _}], Accum) -> clean_tokens([], Accum);
 clean_tokens([H|T], Accum) -> clean_tokens(T, [H|Accum]).
