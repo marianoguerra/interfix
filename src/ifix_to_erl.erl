@@ -3,9 +3,10 @@
 
 -include("../include/ifix.hrl").
 
--record(call, {names=[], args=[]}).
+-record(call, {line=2, names=[], args=[]}).
 -define(EMPTY_CALL, #call{names=[], args=[]}).
 -define(Call(Names, Args), #call{names=Names, args=Args}).
+-define(Call(Line, Names, Args), #call{line=Line, names=Names, args=Args}).
 
 to_erl(Ast) -> to_erl(Ast, #{errors => [], warnings => [], exported => [],
                              level => 0}).
@@ -203,11 +204,27 @@ convert(?CB(Line, Clauses=[?CCS([on, message, '_'|_])|_]), State) ->
             {error, {bad_expr, 'receive', Reason}, State}
     end;
 
-convert(?CB(Line, [?CL({call, _, {['do'], _}}, Body)]), State) ->
+convert(?CB([?CL({call, _, {['do'], _}}, Body)]), State) ->
     with_converted(Body, State,
                    fun (State1, EBody) ->
-                           {ok, {'block', Line, EBody}, State1}
+                           {ok, to_block(EBody), State1}
                    end);
+
+convert(?CB(Line, [?CL(?C(GNames=['for', '_', in, '_'|_], GArgs), Body)]), State) ->
+    {FirstGen, Guards} = split_guards(tl(GNames), GArgs),
+    compile_lc(lc, Line, [FirstGen|Guards], Body, State, []);
+
+convert(?CB(Line, [?CL(?C(GNames=['for', '_', in, bin, '_'|_], GArgs), Body)]), State) ->
+    {FirstGen, Guards} = split_guards(tl(GNames), GArgs),
+    compile_lc(lc, Line, [FirstGen|Guards], Body, State, []);
+
+convert(?CB(Line, [?CL(?C(GNames=[bin, 'for', '_', in, '_'|_], GArgs), Body)]), State) ->
+    {FirstGen, Guards} = split_guards(tl(tl(GNames)), GArgs),
+    compile_lc(bc, Line, [FirstGen|Guards], Body, State, []);
+
+convert(?CB(Line, [?CL(?C(GNames=[bin, 'for', '_', in, bin, '_'|_], GArgs), Body)]), State) ->
+    {FirstGen, Guards} = split_guards(tl(tl(GNames)), GArgs),
+    compile_lc(bc, Line, [FirstGen|Guards], Body, State, []);
 
 convert(V={var, _, _}, State) -> {ok, V, State};
 convert(V={integer, _, _}, State) -> {ok, V, State};
@@ -287,8 +304,8 @@ convert(?Op(Line, '#', Var={var, _, _}, Map={map, _, _}), State) ->
                            {ok, R, State1}
                    end);
 
-convert(?Op(Line, is, Left, Right), State) ->
-    with_converted([Left, Right], State,
+convert(?C(Line, ['_', is|RNames], [Left|RVals]), State) ->
+    with_converted([Left, ?C(Line, RNames, RVals)], State,
                    fun (State1, [ELeft, ERight]) ->
                            {ok, {match, Line, ELeft, ERight}, State1}
                    end);
@@ -723,3 +740,41 @@ group_map_items({map, _Line, Items}=Node, State) ->
     Pairs = lists:reverse(PairsR),
     {Pairs, State1}.
 
+compile_lc(Type, Line, [], Body, State, Accum) ->
+    EGFs = lists:reverse(Accum), 
+    case to_erl(Body, State) of
+        {EBody, State1} ->
+            R = {Type, Line, to_block(EBody), EGFs},
+            {ok, R, State1};
+        Other -> Other
+    end;
+compile_lc(Type, Line, [?Call(GLine, ['_', in, '_'], [Val, Seq])|T], Body, State, Accum) ->
+    with_converted([Val, Seq], State,
+                   fun (State1, [EVal, ESeq]) ->
+                           R = {generate, GLine, EVal, ESeq},
+                           compile_lc(Type, Line, T, Body, State1, [R|Accum])
+                   end);
+compile_lc(Type, Line, [?Call(GLine, ['_', in, bin, '_'], [Val, Seq])|T], Body, State, Accum) ->
+    with_converted([Val, Seq], State,
+                   fun (State1, [EVal, ESeq]) ->
+                           R = {b_generate, GLine, EVal, ESeq},
+                           compile_lc(Type, Line, T, Body, State1, [R|Accum])
+                   end);
+compile_lc(Type, Line, [?Call(GLine, ['when'|Names], Args)|T], Body, State, Accum) ->
+    Call = ?C(GLine, Names, Args),
+    case convert(Call, State) of
+        {ok, R, State1} ->
+            compile_lc(Type, Line, T, Body, State1, [R|Accum]);
+        {error, Error, State1} ->
+            State2 = add_error(State1, Call, Error),
+            compile_lc(Type, Line, T, Body, State2, Accum)
+    end;
+compile_lc(Type, Line, [Other|T], Body, State, Accum) ->
+    State1 = add_error(State, Other, bad_for_expr),
+    compile_lc(Type, Line, T, Body, State1, Accum).
+
+to_block([Expr]) ->
+    Expr;
+to_block(EBody=[H|_]) ->
+    Line = element(2, H),
+    {'block', Line, EBody}.

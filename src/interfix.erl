@@ -179,5 +179,5 @@ main(Args) ->
 %% Internal functions
 %%====================================================================
 
-line({_, Line, _}) -> Line;
-line([{_, Line, _}|_]) -> Line.
+line(T) when is_tuple(T) -> element(2, T);
+line([H|_]) -> line(H).
