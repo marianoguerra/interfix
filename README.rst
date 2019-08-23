@@ -28,6 +28,17 @@ If
             log warn "wat".
     .
 
+
+Compiles to:
+
+.. code-block:: erlang
+
+    main() ->
+        if A < 10 -> do_something_with(A), something_else();
+           A < 20 -> log_warning("A is ~p", [A]);
+           true -> log_warn("wat")
+        end.
+
 Misc
 ----
 
@@ -51,6 +62,25 @@ Misc
         other module :: multiply 3 by 7
         format "value is ~p" with [C]
         C is (divide 42 by 2).
+
+Compiles to:
+
+.. code-block:: erlang
+
+    divide_O_by(A, 0) -> {error, division_by_zero};
+    divide_O_by(A, B) -> {ok, A / B}.
+
+    format_O_with(Str, Args) -> io:format(Str, Args).
+
+    export_this_one(0) -> 0;
+    export_this_one(A) -> A + 1.
+
+    main() ->
+        _ = {1, 1.5, foo, [], [bar, {}]},
+        other_module:multiply_O_by(3, 7),
+        format_O_with("value is ~p", [C]),
+        C = divide_O_by(42, 2).
+
 
 Case Of
 -------
@@ -85,6 +115,40 @@ Case Of
         else:        print :other.
         .
 
+Compiles to:
+
+.. code-block:: erlang
+
+    check_if(A) -> case A of 12 -> print(12) end.
+
+    check_if_else(A) ->
+        case A of
+          12 -> print(12);
+          _ -> print(other)
+        end.
+
+    check_if_O_else_it(1, A) ->
+        case A of
+          12 -> print(12);
+          32 -> print(32);
+          _ -> print(other)
+        end.
+
+    check_if_O_else_it(2, A) ->
+        case A of
+          12 -> print(12);
+          32 -> print(32);
+          33 -> print(32);
+          _ -> print(other)
+        end.
+
+    check_all(A) ->
+        case A of
+          12 -> print(12);
+          32 -> print(32);
+          _ -> print(other)
+        end.
+
 Receive After
 -------------
 
@@ -104,6 +168,25 @@ Receive After
         on message :a: something else;
         after 50 milliseconds: do timeout thing.
         .
+
+Compiles to:
+
+.. code-block:: erlang
+
+    receive_one() -> receive 43 -> do_something_here() end.
+
+    receive_two() ->
+        receive
+          43 -> do_something_here();
+          a -> something_else()
+        end.
+
+    receive_two_and_timeout() ->
+        receive
+          43 -> do_something_here();
+          a -> something_else()
+          after 50 -> do_timeout_thing()
+        end.
 
 Try Catch Finally
 ------------------
@@ -145,6 +228,33 @@ Try Catch Finally
             and cleanup.
         .
 
+Compiles to:
+
+.. code-block:: erlang
+
+    try_always() ->
+        try something_that_may_break(), something_else() after
+          try_to_recover(), and_cleanup()
+        end.
+
+    try_catch() ->
+        try something_that_may_break(), something_else() catch
+          T -> handle_throw(T);
+          error:E -> handle_error(E);
+          exit:Ex -> handle_exit(Ex);
+          Type:E -> handle(Type, E)
+        end.
+
+    try_catch_always() ->
+        try something_that_may_break(), something_else() catch
+          T -> handle_throw(T);
+          error:E -> handle_error(E);
+          exit:Ex -> handle_exit(Ex);
+          Type:E -> handle(Type, E)
+        after
+          try_to_recover(), and_cleanup()
+        end.
+
 Begin End
 ---------
 
@@ -162,6 +272,20 @@ Begin End
             some stuff with A
             and some other stuff
             A + 2).
+
+Compiles to:
+
+.. code-block:: erlang
+
+    simple_do_with(A) ->
+        begin
+          some_stuff_with(A), and_some_other_stuff(), A + 2
+        end.
+
+    do_with_O_as_value(A) ->
+        with_result_of_do(begin
+                            some_stuff_with(A), and_some_other_stuff(), A + 2
+                          end).
 
 Data Types
 ----------
@@ -187,6 +311,30 @@ Data Types
         function reference (fn ref `other_module` divideby 2)
         fun ref by name (fn ref divide _ by _)
         fun ref by name (fn ref other module :: divide _ by _).
+
+Compiles to:
+
+.. code-block:: erlang
+
+    data_types_examples() ->
+        an_int(42),
+        a_float(1.5),
+        an_atom(foo),
+        nil_is(nil),
+        booleans_are_atoms_too_O_and(true, false),
+        an_empty_list([]),
+        a_list_with_some_items([1, 2.5, true, nil, [], [bar]]),
+        an_empty_tuple({}),
+        a_tuple_with_some_items({1, 2.5, true, nil, [], [bar]}),
+        a_cons([1]),
+        improper_list([1 | 2]),
+        nested_conses([1, 2]),
+        a_list_string("hi there"),
+        a_binary_string(<<"hi there too">>),
+        function_reference(fun divideby/2),
+        function_reference(fun other_module:divideby/2),
+        fun_ref_by_name(fun divide_O_by/2),
+        fun_ref_by_name(fun other_module:divide_O_by/2).
 
 Anonymous Functions
 -------------------
@@ -216,175 +364,7 @@ Anonymous Functions
         fn A :divided :by B: #[:ok (A / B)].
         .
 
-As you can see there are no commas, no parenthesis, no reserved keywords and
-functions receive parameter "interfixed" between function name tokens, this
-allows things like:
-
-.. code-block:: ruby
-
-    divide 10 by 2
-    other module :: multiply 3 by 7
-    format "value is ~p" with [C]
-    C is (divide 42 by 2).
-
-The code in the previous examples compiles to:
-
-If Erlang
----------
-
-.. code-block:: erlang
-
-    main() ->
-        if A < 10 -> do_something_with(A), something_else();
-           A < 20 -> log_warning("A is ~p", [A]);
-           true -> log_warn("wat")
-        end.
-
-Misc Erlang
-------------
-
-.. code-block:: erlang
-
-    divide_O_by(A, 0) -> {error, division_by_zero};
-    divide_O_by(A, B) -> {ok, A / B}.
-
-    format_O_with(Str, Args) -> io:format(Str, Args).
-
-    export_this_one(0) -> 0;
-    export_this_one(A) -> A + 1.
-
-    main() ->
-        _ = {1, 1.5, foo, [], [bar, {}]},
-        other_module:multiply_O_by(3, 7),
-        format_O_with("value is ~p", [C]),
-        C = divide_O_by(42, 2).
-
-
-Case Of Erlang
---------------
-
-.. code-block:: erlang
-
-    check_if(A) -> case A of 12 -> print(12) end.
-
-    check_if_else(A) ->
-        case A of
-          12 -> print(12);
-          _ -> print(other)
-        end.
-
-    check_if_O_else_it(1, A) ->
-        case A of
-          12 -> print(12);
-          32 -> print(32);
-          _ -> print(other)
-        end.
-
-    check_if_O_else_it(2, A) ->
-        case A of
-          12 -> print(12);
-          32 -> print(32);
-          33 -> print(32);
-          _ -> print(other)
-        end.
-
-    check_all(A) ->
-        case A of
-          12 -> print(12);
-          32 -> print(32);
-          _ -> print(other)
-        end.
-
-Receive After Erlang
---------------------
-
-.. code-block:: erlang
-
-    receive_one() -> receive 43 -> do_something_here() end.
-
-    receive_two() ->
-        receive
-          43 -> do_something_here();
-          a -> something_else()
-        end.
-
-    receive_two_and_timeout() ->
-        receive
-          43 -> do_something_here();
-          a -> something_else()
-          after 50 -> do_timeout_thing()
-        end.
-
-Try Catch Finally Erlang
-------------------------
-
-.. code-block:: erlang
-
-    try_always() ->
-        try something_that_may_break(), something_else() after
-          try_to_recover(), and_cleanup()
-        end.
-
-    try_catch() ->
-        try something_that_may_break(), something_else() catch
-          T -> handle_throw(T);
-          error:E -> handle_error(E);
-          exit:Ex -> handle_exit(Ex);
-          Type:E -> handle(Type, E)
-        end.
-
-    try_catch_always() ->
-        try something_that_may_break(), something_else() catch
-          T -> handle_throw(T);
-          error:E -> handle_error(E);
-          exit:Ex -> handle_exit(Ex);
-          Type:E -> handle(Type, E)
-        after
-          try_to_recover(), and_cleanup()
-        end.
-
-Begin End Erlang
-----------------
-
-.. code-block:: erlang
-
-    simple_do_with(A) ->
-        begin
-          some_stuff_with(A), and_some_other_stuff(), A + 2
-        end.
-
-    do_with_O_as_value(A) ->
-        with_result_of_do(begin
-                            some_stuff_with(A), and_some_other_stuff(), A + 2
-                          end).
-
-Data Types Erlang
------------------
-
-.. code-block:: erlang
-
-    data_types_examples() ->
-        an_int(42),
-        a_float(1.5),
-        an_atom(foo),
-        nil_is(nil),
-        booleans_are_atoms_too_O_and(true, false),
-        an_empty_list([]),
-        a_list_with_some_items([1, 2.5, true, nil, [], [bar]]),
-        an_empty_tuple({}),
-        a_tuple_with_some_items({1, 2.5, true, nil, [], [bar]}),
-        a_cons([1]),
-        improper_list([1 | 2]),
-        nested_conses([1, 2]),
-        a_list_string("hi there"),
-        a_binary_string(<<"hi there too">>),
-        function_reference(fun divideby/2),
-        function_reference(fun other_module:divideby/2),
-        fun_ref_by_name(fun divide_O_by/2),
-        fun_ref_by_name(fun other_module:divide_O_by/2).
-
-Anonymous Functions Erlang
---------------------------
+Compiles to:
 
 .. code-block:: erlang
 
@@ -403,6 +383,17 @@ Anonymous Functions Erlang
         fun (A, divided, by, 0) -> {error, divide_by_zero};
             (A, divided, by, B) -> {ok, A / B}
         end.
+
+As you can see there are no commas, no parenthesis, no reserved keywords and
+functions receive parameter "interfixed" between function name tokens, this
+allows things like:
+
+.. code-block:: ruby
+
+    divide 10 by 2
+    other module :: multiply 3 by 7
+    format "value is ~p" with [C]
+    C is (divide 42 by 2).
 
 Build
 -----
